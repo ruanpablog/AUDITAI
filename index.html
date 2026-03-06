@@ -216,6 +216,10 @@
                         <!-- Categorias e itens populados via JS -->
                     </div>
 
+                    <!-- Hidden file input for photo upload -->
+                    <input type="file" id="photo-upload-input" accept="image/*" capture="environment"
+                        style="display:none;">
+
                     <div class="modal-footer" style="margin-top:24px;">
                         <button class="btn btn-outline" id="btn-prev-step-3">Voltar aos Departamentos</button>
                         <button class="btn btn-primary" id="btn-save-dept">Salvar Departamento <i
@@ -348,14 +352,37 @@
                 </div>
 
                 <div class="tabs">
-                    <button class="tab-btn active" data-tab="admin-stores">Filiais</button>
+                    <button class="tab-btn active" data-tab="admin-companies">Empresas</button>
+                    <button class="tab-btn" data-tab="admin-stores">Filiais</button>
                     <button class="tab-btn" data-tab="admin-depts">Departamentos</button>
                     <button class="tab-btn" data-tab="admin-checklist">Checklists</button>
-                    <button class="tab-btn" data-tab="admin-users">Usuários (Aprovações)</button>
+                    <button class="tab-btn" data-tab="admin-users">Usuários</button>
+                </div>
+
+                <!-- Admin Tab: Empresas -->
+                <div id="admin-companies" class="tab-content active">
+                    <div class="glass" style="padding: 20px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 16px;">
+                            <h3 style="font-size: 1.1rem;">Lista de Empresas</h3>
+                            <button class="btn btn-primary" id="btn-add-company"><i class="ph ph-plus"></i> Nova
+                                Empresa</button>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome Fantasia</th>
+                                    <th>CNPJ</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-companies-body"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- Admin Tab: Lojas -->
-                <div id="admin-stores" class="tab-content active">
+                <div id="admin-stores" class="tab-content">
                     <div class="glass" style="padding: 20px;">
                         <div style="display:flex; justify-content:space-between; margin-bottom: 16px;">
                             <h3 style="font-size: 1.1rem;">Lista de Filiais</h3>
@@ -373,82 +400,114 @@
                             </thead>
                             <tbody id="admin-stores-body"></tbody>
                         </table>
+                        <!-- Outras abas admin podem ser expandidas conforme necessidade -->
+                        <div id="admin-depts" class="tab-content">
+                            <div class="glass" style="padding: 20px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom: 16px;">
+                                    <h3 style="font-size: 1.1rem;">Lista de Departamentos</h3>
+                                    <button class="btn btn-primary" id="btn-add-dept"><i class="ph ph-plus"></i> Novo
+                                        Departamento</button>
+                                </div>
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Nome</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-depts-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="admin-checklist" class="tab-content">
+                            <div class="glass" style="padding: 20px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom: 16px;">
+                                    <h3 style="font-size: 1.1rem;">Itens de Checklist</h3>
+                                    <button class="btn btn-primary" id="btn-add-checklist"><i class="ph ph-plus"></i>
+                                        Novo Item</button>
+                                </div>
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Pergunta</th>
+                                            <th>Crítico</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-checklist-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="admin-users" class="tab-content">
+                            <div class="glass" style="padding: 20px;">
+                                <h3 style="font-size: 1.1rem; margin-bottom: 16px;">Aprovação de Usuários</h3>
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Email</th>
+                                            <th>Perfil</th>
+                                            <th>Status</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-users-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Outras abas admin podem ser expandidas conforme necessidade -->
-                <div id="admin-depts" class="tab-content">
-                    <div class="glass" style="padding: 20px; text-align:center; color: var(--text-muted);">Configuração
-                        de Departamentos (Módulo em desenvolvimento)</div>
-                </div>
-                <div id="admin-checklist" class="tab-content">
-                    <div class="glass" style="padding: 20px; text-align:center; color: var(--text-muted);">Configuração
-                        de Checklists (Módulo em desenvolvimento)</div>
-                </div>
-                <div id="admin-users" class="tab-content">
-                    <div class="glass" style="padding: 20px;">
-                        <h3 style="font-size: 1.1rem; margin-bottom: 16px;">Aprovação de Usuários</h3>
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Email</th>
-                                    <th>Perfil</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-users-body"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==============================
+                    <!-- ==============================
                  5. RELATÓRIO VIEW
             =============================== -->
-            <div id="report-view" class="page content-section hidden">
-                <div class="page-header">
-                    <div>
-                        <h2>Relatório de Auditoria</h2>
-                        <p id="report-subtitle">Detalhes da avaliação</p>
-                    </div>
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn btn-outline" id="btn-back-report"><i class="ph ph-arrow-left"></i>
-                            Voltar</button>
-                        <button class="btn btn-primary" onclick="window.print()"><i class="ph ph-printer"></i> Imprimir
-                            / PDF</button>
-                    </div>
-                </div>
-
-                <div class="glass" style="padding: 24px; margin-bottom: 24px;">
-                    <div
-                        style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 20px;">
-                        <div>
-                            <h1 style="font-size: 2rem; margin-bottom: 4px;" id="report-store-name">Nome da Loja</h1>
-                            <p style="color: var(--text-muted);" id="report-date">Data: 00/00/0000 | Auditor: Nome</p>
+                    <div id="report-view" class="page content-section hidden">
+                        <div class="page-header">
+                            <div>
+                                <h2>Relatório de Auditoria</h2>
+                                <p id="report-subtitle">Detalhes da avaliação</p>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <button class="btn btn-outline" id="btn-back-report"><i class="ph ph-arrow-left"></i>
+                                    Voltar</button>
+                                <button class="btn btn-primary" onclick="window.print()"><i class="ph ph-printer"></i>
+                                    Imprimir
+                                    / PDF</button>
+                            </div>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 3rem; font-family: var(--font-heading); font-weight:700; color: var(--primary);"
-                                id="report-score">0%</div>
-                            <div class="badge badge-success" id="report-classification">Excelente</div>
+
+                        <div class="glass" style="padding: 24px; margin-bottom: 24px;">
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 20px;">
+                                <div>
+                                    <h1 style="font-size: 2rem; margin-bottom: 4px;" id="report-store-name">Nome da Loja
+                                    </h1>
+                                    <p style="color: var(--text-muted);" id="report-date">Data: 00/00/0000 | Auditor:
+                                        Nome</p>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 3rem; font-family: var(--font-heading); font-weight:700; color: var(--primary);"
+                                        id="report-score">0%</div>
+                                    <div class="badge badge-success" id="report-classification">Excelente</div>
+                                </div>
+                            </div>
+
+                            <h3 style="margin-bottom: 16px;">Resumo por Departamento</h3>
+                            <div id="report-depts-summary" style="display:flex; flex-direction:column; gap:16px;">
+                                <!-- Barras de progresso dinâmicas -->
+                            </div>
+                        </div>
+
+                        <div class="glass" style="padding: 24px;">
+                            <h3 style="margin-bottom: 16px; color: var(--danger);"><i class="ph ph-warning"></i> Pontos
+                                Críticos
+                                e Observações (Ruim)</h3>
+                            <div id="report-critical-items" style="display:flex; flex-direction:column; gap:12px;">
+                                <!-- Lista de pontos a melhorar -->
+                            </div>
                         </div>
                     </div>
-
-                    <h3 style="margin-bottom: 16px;">Resumo por Departamento</h3>
-                    <div id="report-depts-summary" style="display:flex; flex-direction:column; gap:16px;">
-                        <!-- Barras de progresso dinâmicas -->
-                    </div>
-                </div>
-
-                <div class="glass" style="padding: 24px;">
-                    <h3 style="margin-bottom: 16px; color: var(--danger);"><i class="ph ph-warning"></i> Pontos Críticos
-                        e Observações (Ruim)</h3>
-                    <div id="report-critical-items" style="display:flex; flex-direction:column; gap:12px;">
-                        <!-- Lista de pontos a melhorar -->
-                    </div>
-                </div>
-            </div>
 
         </main>
     </section>
