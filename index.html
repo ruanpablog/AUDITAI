@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Auditaí - Auditoria de Lojas</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <!-- ==========================================
+         AUTH VIEW
+    =========================================== -->
+    <section id="auth-view" class="auth-view">
+        <div class="auth-orb auth-orb-1"></div>
+        <div class="auth-orb auth-orb-2"></div>
+
+        <div class="glass auth-card">
+            <div class="auth-logo">
+                <i class="ph ph-magnifying-glass"></i>
+                <h1>AUDITAÍ</h1>
+            </div>
+            <p class="auth-tagline">Checklist de Lojas</p>
+            <p class="auth-subtitle">Sistema Profissional de Auditoria</p>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-login">Login</button>
+                <button class="auth-tab" id="tab-register">Cadastro</button>
+            </div>
+
+            <div id="auth-error-msg" class="auth-error"></div>
+
+            <!-- Formulário de Login -->
+            <form id="login-form">
+                <div class="form-group">
+                    <input type="email" id="login-email" placeholder="Seu e-mail" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="login-pass" placeholder="Sua senha" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full" id="btn-do-login">
+                    <span>Entrar</span> <i class="ph ph-sign-in"></i>
+                </button>
+            </form>
+
+            <!-- Formulário de Cadastro -->
+            <form id="register-form" class="hidden">
+                <div class="form-group">
+                    <input type="text" id="reg-name" placeholder="Nome completo" required>
+                </div>
+                <div class="form-group">
+                    <input type="email" id="reg-email" placeholder="Seu e-mail" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="reg-pass" placeholder="Crie uma senha" required>
+                </div>
+                <!-- Role selection only for demo/dev purposes -->
+                <div class="form-group">
+                    <select id="reg-role" required>
+                        <option value="" disabled selected>Selecione seu perfil</option>
+                        <option value="admin">Administrador</option>
+                        <option value="auditor">Auditor</option>
+                        <option value="manager">Gerente de Loja</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-secondary btn-full" id="btn-do-register">
+                    <span>Criar Conta</span> <i class="ph ph-user-plus"></i>
+                </button>
+            </form>
+
+            <p class="auth-link hidden" id="pending-msg">Sua conta está aguardando aprovação.</p>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         APP LAYOUT (Authenticated)
+    =========================================== -->
+    <section id="app-view" class="app-layout hidden">
+
+        <!-- SIDEBAR OVERLAY (Mobile) -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- SIDEBAR -->
+        <aside class="app-sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <i class="ph ph-magnifying-glass"></i>
+                <span>AUDITAÍ</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" data-target="audit-flow">
+                    <i class="ph ph-clipboard-text"></i> Nova Auditoria
+                </button>
+                <button class="nav-btn" data-target="dashboard-view" id="nav-dashboard">
+                    <i class="ph ph-chart-pie-slice"></i> Dashboard
+                </button>
+                <button class="nav-btn" data-target="audits-list-view">
+                    <i class="ph ph-list-checks"></i> Histórico
+                </button>
+                <button class="nav-btn admin-only hidden" data-target="admin-view" id="nav-admin">
+                    <i class="ph ph-gear-six"></i> Painel Admin
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="user-avatar" id="sidebar-avatar">A</div>
+                    <div class="user-meta">
+                        <span class="user-name" id="sidebar-user-name">Usuário</span>
+                        <span class="user-role" id="sidebar-user-role">Role</span>
+                    </div>
+                </div>
+                <button class="logout-btn" id="btn-logout">
+                    <i class="ph ph-sign-out"></i> Sair
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="app-main">
+            <!-- MOBILE HEADER -->
+            <div class="mobile-top">
+                <button class="btn-icon" id="btn-mobile-menu"><i class="ph ph-list"></i></button>
+                <span style="font-family: var(--font-heading); font-weight: 700; color: var(--primary);">AUDITAÍ</span>
+                <div style="width:32px;"></div><!-- Spacer -->
+            </div>
+
+            <!-- ==============================
+                 1. NOVA AUDITORIA FLOW
+            =============================== -->
+            <div id="audit-flow" class="page content-section">
+                <div class="page-header">
+                    <div>
+                        <h2>Nova Auditoria</h2>
+                        <p>Siga os passos para realizar o checklist da loja</p>
+                    </div>
+                </div>
+
+                <div class="step-bar" id="audit-progress-bar">
+                    <!-- Progress dots dynamic -->
+                </div>
+
+                <!-- Passo 1: Selecionar Loja -->
+                <div id="step-1" class="audit-step">
+                    <div class="step-title">
+                        <h3>1. Selecionar Filial</h3>
+                        <p>Escolha qual loja será auditada hoje.</p>
+                    </div>
+                    <div class="select-grid" id="stores-grid">
+                        <!-- Lojas populadas via JS -->
+                    </div>
+                    <div class="modal-footer" style="margin-top:24px;">
+                        <button class="btn btn-primary hidden" id="btn-next-step-1">Continuar <i
+                                class="ph ph-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- Passo 2: Selecionar Departamento -->
+                <div id="step-2" class="audit-step hidden">
+                    <div class="step-title">
+                        <h3 id="current-store-title">Loja Selecionada</h3>
+                        <p>Selecione um departamento para auditar.</p>
+                    </div>
+
+                    <div class="glass" style="padding: 20px; margin-bottom: 24px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Nome do Gerente / Responsável da Loja</label>
+                            <input type="text" id="audit-manager-name" placeholder="Ex: João Silva" required>
+                        </div>
+                    </div>
+
+                    <div class="select-grid" id="depts-grid">
+                        <!-- Depts populados via JS -->
+                    </div>
+
+                    <div class="modal-footer" style="margin-top:24px;">
+                        <button class="btn btn-outline" id="btn-prev-step-2">Voltar</button>
+                        <button class="btn btn-primary hidden" id="btn-finish-audit">Finalizar Auditoria <i
+                                class="ph ph-check-circle"></i></button>
+                    </div>
+                </div>
+
+                <!-- Passo 3: Avaliar Itens do Departamento -->
+                <div id="step-3" class="audit-step hidden">
+                    <div class="step-title">
+                        <h3 id="current-dept-title">Departamento</h3>
+                        <p>Avalie os itens de checklist por categoria.</p>
+                    </div>
+
+                    <div class="glass" style="padding: 20px; margin-bottom: 24px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Nome do Responsável pelo Departamento</label>
+                            <input type="text" id="dept-responsible-name" placeholder="Ex: Maria (Líder de Frios)"
+                                required>
+                        </div>
+                    </div>
+
+                    <div id="categories-container">
+                        <!-- Categorias e itens populados via JS -->
+                    </div>
+
+                    <div class="modal-footer" style="margin-top:24px;">
+                        <button class="btn btn-outline" id="btn-prev-step-3">Voltar aos Departamentos</button>
+                        <button class="btn btn-primary" id="btn-save-dept">Salvar Departamento <i
+                                class="ph ph-floppy-disk"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==============================
+                 2. DASHBOARD VIEW
+            =============================== -->
+            <div id="dashboard-view" class="page content-section hidden">
+                <div class="page-header">
+                    <div>
+                        <h2>Dashboard</h2>
+                        <p>Visão geral de performance e auditorias</p>
+                    </div>
+                    <div class="form-group" style="min-width: 200px; margin-bottom: 0;">
+                        <select id="dash-store-filter">
+                            <option value="all">Todas as Lojas</option>
+                            <!-- Lojas populadas via JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="dash-overview">Visão Geral</button>
+                    <button class="tab-btn" data-tab="dash-evolution">Evolução</button>
+                    <button class="tab-btn" data-tab="dash-departments">Departamentos</button>
+                </div>
+
+                <!-- Visão Geral -->
+                <div id="dash-overview" class="tab-content active">
+                    <div class="card-grid">
+                        <div class="glass kpi-card kpi-primary">
+                            <span class="kpi-label"><i class="ph ph-files"></i> Total Auditorias</span>
+                            <span class="kpi-value" id="kpi-total-audits">0</span>
+                        </div>
+                        <div class="glass kpi-card kpi-accent">
+                            <span class="kpi-label"><i class="ph ph-target"></i> Média Geral</span>
+                            <span class="kpi-value" id="kpi-avg-score">0%</span>
+                        </div>
+                        <div class="glass kpi-card kpi-secondary">
+                            <span class="kpi-label"><i class="ph ph-storefront"></i> Lojas Avaliadas</span>
+                            <span class="kpi-value" id="kpi-stores-audited">0</span>
+                        </div>
+                        <div class="glass kpi-card kpi-danger">
+                            <span class="kpi-label"><i class="ph ph-warning-circle"></i> Itens Críticos</span>
+                            <span class="kpi-value" id="kpi-critical-issues">0</span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="glass" style="padding: 20px; flex: 2;">
+                            <h3 style="margin-bottom: 16px; font-size: 1.1rem;">Tendência de Performance</h3>
+                            <canvas id="chart-evolution" height="250"></canvas>
+                        </div>
+                        <div class="glass"
+                            style="padding: 20px; flex: 1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                            <h3 style="margin-bottom: 16px; font-size: 1.1rem; width:100%; text-align:left;">
+                                Classificação Geral</h3>
+                            <div style="width: 200px; height: 200px; position:relative;">
+                                <canvas id="chart-classification"></canvas>
+                                <div
+                                    style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center;">
+                                    <span style="font-size: 1.5rem; font-weight:bold; font-family:var(--font-heading);"
+                                        id="gauge-score">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Evolução -->
+                <div id="dash-evolution" class="tab-content">
+                    <div class="glass" style="padding: 20px;">
+                        <h3 style="margin-bottom: 16px; font-size: 1.1rem;">Comparativo Histórico</h3>
+                        <canvas id="chart-history" height="300"></canvas>
+                    </div>
+                </div>
+
+                <!-- Departamentos -->
+                <div id="dash-departments" class="tab-content">
+                    <div class="glass" style="padding: 20px;">
+                        <h3 style="margin-bottom: 16px; font-size: 1.1rem;">Performance por Departamento</h3>
+                        <canvas id="chart-departments" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==============================
+                 3. HISTÓRICO DE AUDITORIAS
+            =============================== -->
+            <div id="audits-list-view" class="page content-section hidden">
+                <div class="page-header">
+                    <div>
+                        <h2>Histórico</h2>
+                        <p>Lista de todas as auditorias realizadas</p>
+                    </div>
+                </div>
+
+                <div class="glass" style="padding: 20px; overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Loja</th>
+                                <th>Auditor</th>
+                                <th>Score</th>
+                                <th>Classificação</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audits-table-body">
+                            <!-- Populado via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ==============================
+                 4. PAINEL ADMIN
+            =============================== -->
+            <div id="admin-view" class="page content-section hidden">
+                <div class="page-header">
+                    <div>
+                        <h2>Painel Administrativo</h2>
+                        <p>Gerencie configurações do sistema</p>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="admin-stores">Filiais</button>
+                    <button class="tab-btn" data-tab="admin-depts">Departamentos</button>
+                    <button class="tab-btn" data-tab="admin-checklist">Checklists</button>
+                    <button class="tab-btn" data-tab="admin-users">Usuários (Aprovações)</button>
+                </div>
+
+                <!-- Admin Tab: Lojas -->
+                <div id="admin-stores" class="tab-content active">
+                    <div class="glass" style="padding: 20px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 16px;">
+                            <h3 style="font-size: 1.1rem;">Lista de Filiais</h3>
+                            <button class="btn btn-primary" id="btn-add-store"><i class="ph ph-plus"></i> Nova
+                                Loja</button>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nome</th>
+                                    <th>Cidade</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-stores-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Outras abas admin podem ser expandidas conforme necessidade -->
+                <div id="admin-depts" class="tab-content">
+                    <div class="glass" style="padding: 20px; text-align:center; color: var(--text-muted);">Configuração
+                        de Departamentos (Módulo em desenvolvimento)</div>
+                </div>
+                <div id="admin-checklist" class="tab-content">
+                    <div class="glass" style="padding: 20px; text-align:center; color: var(--text-muted);">Configuração
+                        de Checklists (Módulo em desenvolvimento)</div>
+                </div>
+                <div id="admin-users" class="tab-content">
+                    <div class="glass" style="padding: 20px;">
+                        <h3 style="font-size: 1.1rem; margin-bottom: 16px;">Aprovação de Usuários</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                    <th>Perfil</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-users-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==============================
+                 5. RELATÓRIO VIEW
+            =============================== -->
+            <div id="report-view" class="page content-section hidden">
+                <div class="page-header">
+                    <div>
+                        <h2>Relatório de Auditoria</h2>
+                        <p id="report-subtitle">Detalhes da avaliação</p>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-outline" id="btn-back-report"><i class="ph ph-arrow-left"></i>
+                            Voltar</button>
+                        <button class="btn btn-primary" onclick="window.print()"><i class="ph ph-printer"></i> Imprimir
+                            / PDF</button>
+                    </div>
+                </div>
+
+                <div class="glass" style="padding: 24px; margin-bottom: 24px;">
+                    <div
+                        style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 20px;">
+                        <div>
+                            <h1 style="font-size: 2rem; margin-bottom: 4px;" id="report-store-name">Nome da Loja</h1>
+                            <p style="color: var(--text-muted);" id="report-date">Data: 00/00/0000 | Auditor: Nome</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 3rem; font-family: var(--font-heading); font-weight:700; color: var(--primary);"
+                                id="report-score">0%</div>
+                            <div class="badge badge-success" id="report-classification">Excelente</div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-bottom: 16px;">Resumo por Departamento</h3>
+                    <div id="report-depts-summary" style="display:flex; flex-direction:column; gap:16px;">
+                        <!-- Barras de progresso dinâmicas -->
+                    </div>
+                </div>
+
+                <div class="glass" style="padding: 24px;">
+                    <h3 style="margin-bottom: 16px; color: var(--danger);"><i class="ph ph-warning"></i> Pontos Críticos
+                        e Observações (Ruim)</h3>
+                    <div id="report-critical-items" style="display:flex; flex-direction:column; gap:12px;">
+                        <!-- Lista de pontos a melhorar -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </section>
+
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+
+</html>
