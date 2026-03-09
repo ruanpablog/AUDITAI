@@ -220,17 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'i57', cat_id: 'c28', dept_id: 'd8', question: 'Avalie se a área de produtos avariados não entra em contato com produtos de consumo diários.', eh_critico: false, status: 'Ativo' },
         { id: 'i58', cat_id: 'c28', dept_id: 'd8', question: 'Como está o controle cruzado químico (produtos higiênicos rompidos) e alimentícios vencidos? Isolados?', eh_critico: true, status: 'Ativo' },
         { id: 'i59', cat_id: 'c29', dept_id: 'd8', question: 'Avalie se as quebras de seção/gôndola estão sendo reportadas e "baixadas" do sistema fiscal diariamente.', eh_critico: true, status: 'Ativo' },
-        { id: 'i60', cat_id: 'c30', dept_id: 'd8', question: 'Avalie se latas que vazaram estão com isolamento lacrado que iniba mau cheiro no estoque.', eh_critico: false, status: 'Ativo' },
-        { id: 'i61', cat_id: 'c30', dept_id: 'd8', question: 'Como atesta-se a descaracterização (massas que não prestam) para evitar catação de lixo orgânico impróprio?', eh_critico: false, status: 'Ativo' }
-    ];
-
-    const defaultStores = [
-        { id: 's1', code: '001', name: 'Super Matriz Centro', city: 'São Paulo' },
-        { id: 's2', code: '002', name: 'Filial Zona Sul', city: 'São Paulo' },
-        { id: 's3', code: '003', name: 'Express Aeroporto', city: 'Guarulhos' }
-    ];
-
-    let db = {
 
 
     // --- DOM Elements ---
