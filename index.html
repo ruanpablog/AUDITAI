@@ -13,11 +13,13 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap"
         rel="stylesheet">
 
-    <!-- Phosphor Icons -->
+    <!-- Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
-    <!-- Chart.js -->
+    <!-- Charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="styles.css">
@@ -40,7 +42,7 @@
             <p class="auth-tagline">Checklist de Lojas</p>
             <p class="auth-subtitle">Sistema Profissional de Auditoria</p>
 
-            <div class="auth-tabs">
+            <div class="auth-tabs" id="auth-tabs-container">
                 <button class="auth-tab active" id="tab-login">Login</button>
                 <button class="auth-tab" id="tab-register">Cadastro</button>
             </div>
@@ -58,6 +60,11 @@
                 <button type="submit" class="btn btn-primary btn-full" id="btn-do-login">
                     <span>Entrar</span> <i class="ph ph-sign-in"></i>
                 </button>
+                <div style="text-align: center; margin-top: 12px;">
+                    <button type="button" id="btn-show-forgot" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:0.85rem; text-decoration:underline;">
+                        Esqueceu a senha?
+                    </button>
+                </div>
             </form>
 
             <!-- Formulário de Cadastro -->
@@ -71,21 +78,64 @@
                 <div class="form-group">
                     <input type="password" id="reg-pass" placeholder="Crie uma senha" required>
                 </div>
-                <!-- Role selection only for demo/dev purposes -->
-                <div class="form-group">
-                    <select id="reg-role" required>
-                        <option value="" disabled selected>Selecione seu perfil</option>
-                        <option value="admin">Administrador</option>
-                        <option value="auditor">Auditor</option>
-                        <option value="manager">Gerente de Loja</option>
-                    </select>
-                </div>
                 <button type="submit" class="btn btn-secondary btn-full" id="btn-do-register">
                     <span>Criar Conta</span> <i class="ph ph-user-plus"></i>
                 </button>
             </form>
 
-            <p class="auth-link hidden" id="pending-msg">Sua conta está aguardando aprovação.</p>
+            <!-- Formulário de Recuperaço de Senha -->
+            <div id="forgot-form" class="hidden">
+                <div style="text-align:center; margin-bottom: 20px;">
+                    <i class="ph ph-lock-key" style="font-size: 2.5rem; color: var(--primary);"></i>
+                    <h3 style="margin-top: 8px; font-size: 1.1rem;">Recuperar Senha</h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">
+                        Digite seu e-mail e enviaremos um link para redefinir sua senha.
+                    </p>
+                </div>
+                <div class="form-group">
+                    <input type="email" id="forgot-email" placeholder="Seu e-mail cadastrado">
+                </div>
+                <button type="button" class="btn btn-primary btn-full" id="btn-send-reset">
+                    <span>Enviar Link de Recuperaço</span> <i class="ph ph-paper-plane-right"></i>
+                </button>
+                <div style="text-align:center; margin-top: 12px;">
+                    <button type="button" id="btn-back-to-login" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem;">
+                        ← Voltar ao Login
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mensagem de Email Enviado (recuperaço) -->
+            <div id="reset-sent-msg" class="hidden" style="text-align:center; padding: 10px 0;">
+                <i class="ph ph-envelope-simple-open" style="font-size: 2.5rem; color: var(--primary);"></i>
+                <h3 style="margin-top: 8px; font-size: 1.1rem;">Email Enviado!</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 6px;">
+                    Enviamos um link de redefiniço para <b id="reset-email-display"></b>
+                </p>
+                <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 8px;">
+                    Verifique sua caixa de entrada e o spam. O link expira em 24h.
+                </p>
+                <button type="button" id="btn-back-login-from-reset" class="btn btn-outline btn-full" style="margin-top: 16px;">
+                    Voltar ao Login
+                </button>
+            </div>
+
+            <!-- Mensagem de Cadastro Enviado (aguardando admin) -->
+            <div id="register-sent-msg" class="hidden" style="text-align:center; padding: 10px 0;">
+                <i class="ph ph-check-circle" style="font-size: 2.5rem; color: var(--primary);"></i>
+                <h3 style="margin-top: 8px; font-size: 1.1rem;">Cadastro Enviado!</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 6px;">
+                    Seu cadastro foi registrado e um e-mail de confirmaço foi enviado para <b id="register-email-display"></b>.
+                </p>
+                <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 8px;">
+                    Após a validaço pelo administrador, você receberá um e-mail com acesso liberado ao sistema.
+                </p>
+                <button type="button" id="btn-back-login-from-register" class="btn btn-outline btn-full" style="margin-top: 16px;">
+                    Voltar ao Login
+                </button>
+            </div>
+
+            <p class="auth-link hidden" id="pending-msg">Sua conta está aguardando aprovaço do administrador.</p>
         </div>
     </section>
 
@@ -113,6 +163,9 @@
                 </button>
                 <button class="nav-btn" data-target="audits-list-view">
                     <i class="ph ph-list-checks"></i> Histórico
+                </button>
+                <button class="nav-btn" data-target="scheduled-audits-view">
+                    <i class="ph ph-calendar-check"></i> Agendamentos
                 </button>
                 <button class="nav-btn admin-only hidden" data-target="admin-view" id="nav-admin">
                     <i class="ph ph-gear-six"></i> Painel Admin
@@ -149,10 +202,9 @@
                 <div class="page-header">
                     <div>
                         <h2>Nova Auditoria</h2>
-                        <p>Siga os passos para realizar o checklist da loja</p>
+                        <p>Siga os passos para realizar o checklist da lojá</p>
                     </div>
                 </div>
-
                 <div class="step-bar" id="audit-progress-bar">
                     <!-- Progress dots dynamic -->
                 </div>
@@ -161,14 +213,54 @@
                 <div id="step-1" class="audit-step">
                     <div class="step-title">
                         <h3>1. Selecionar Filial</h3>
-                        <p>Escolha qual loja será auditada hoje.</p>
+                        <p>Escolha qual lojá será auditada hojáe.</p>
                     </div>
                     <div class="select-grid" id="stores-grid">
                         <!-- Lojas populadas via JS -->
                     </div>
                     <div class="modal-footer" style="margin-top:24px;">
-                        <button class="btn btn-primary hidden" id="btn-next-step-1">Continuar <i
-                                class="ph ph-arrow-right"></i></button>
+                        <button class="btn btn-primary" id="btn-next-step-1" style="display:none;">Continuar <i class="ph ph-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- Passo 1.1: Selecionar Tipo de Auditoria -->
+                <div id="step-audit-type" class="audit-step hidden">
+                    <div class="step-title">
+                        <h3 id="type-selection-store-title">Loja Selecionada</h3>
+                        <p>Qual tipo de auditoria deseja realizar</p>
+                    </div>
+
+                    <div class="select-grid">
+                        <div class="glass select-card" id="btn-type-standard">
+                            <i class="ph ph-clipboard-text card-icon"></i>
+                            <h4>Auditoria Padrão</h4>
+                            <p>Checklist completo de todos os setores.</p>
+                        </div>
+                        <div class="glass select-card" id="btn-type-followup">
+                            <i class="ph ph-arrow-counter-clockwise card-icon"></i>
+                            <h4>Auditoria de Retorno</h4>
+                            <p>Verificar correço de itens reprovados anteriormente.</p>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="margin-top:24px;">
+                        <button class="btn btn-outline" id="btn-prev-step-type">Voltar</button>
+                    </div>
+                </div>
+
+                <!-- Passo 1.2: Selecionar Auditoria para Retorno -->
+                <div id="step-followup-selection" class="audit-step hidden">
+                    <div class="step-title">
+                        <h3>Selecionar Auditoria de Origem</h3>
+                        <p>Escolha uma auditoria anterior para verificar as correções.</p>
+                    </div>
+
+                    <div id="followup-list-container" class="select-grid">
+                        <!-- Auditorias com falhas sero listadas aqui -->
+                    </div>
+
+                    <div class="modal-footer" style="margin-top:24px;">
+                        <button class="btn btn-outline" id="btn-prev-step-followup">Voltar</button>
                     </div>
                 </div>
 
@@ -180,9 +272,15 @@
                     </div>
 
                     <div class="glass" style="padding: 20px; margin-bottom: 24px;">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label>Nome do Gerente / Responsável da Loja</label>
-                            <input type="text" id="audit-manager-name" placeholder="Ex: João Silva" required>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Nome do Gerente da Filial</label>
+                                <input type="text" id="audit-manager-name" placeholder="Ex: Joo Silva" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Nome do Encarregado / Supervisor</label>
+                                <input type="text" id="audit-supervisor-name" placeholder="Ex: Ricardo Souza" required>
+                            </div>
                         </div>
                     </div>
 
@@ -192,8 +290,24 @@
 
                     <div class="modal-footer" style="margin-top:24px;">
                         <button class="btn btn-outline" id="btn-prev-step-2">Voltar</button>
-                        <button class="btn btn-primary hidden" id="btn-finish-audit">Finalizar Auditoria <i
-                                class="ph ph-check-circle"></i></button>
+                        <button class="btn btn-primary hidden" id="btn-finish-audit">Finalizar Auditoria <i class="ph ph-check-circle"></i></button>
+                    </div>
+                </div>
+
+                <!-- Passo 2.5: Selecionar Categorias -->
+                <div id="step-cat-selection" class="audit-step hidden">
+                    <div class="step-title">
+                        <h3 id="cat-selection-store-dept">Setor</h3>
+                        <p>Selecione uma categoria para auditar.</p>
+                    </div>
+
+                    <div class="select-grid" id="categories-grid">
+                        <!-- Categorias populadas via JS -->
+                    </div>
+                    <div class="modal-footer" style="margin-top:24px;">
+                        <button class="btn btn-outline" id="btn-prev-step-cat">Voltar aos Setores</button>
+                        <button class="btn btn-primary" id="btn-finish-dept">Concluir Departamento <i class="ph ph-check-square"></i></button>
+                    </div>
                     </div>
                 </div>
 
@@ -203,123 +317,122 @@
                         <h3 id="current-dept-title">Departamento</h3>
                         <p>Avalie os itens de checklist por categoria.</p>
                     </div>
-
-                    <div class="glass" style="padding: 20px; margin-bottom: 24px;">
+                    <div class="glass" style="padding: 16px; margin-bottom: 16px;">
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label>Nome do Responsável pelo Departamento</label>
-                            <input type="text" id="dept-responsible-name" placeholder="Ex: Maria (Líder de Frios)"
-                                required>
+                            <label>Nome do Responsavel pelo Setor</label>
+                            <input type="text" id="dept-responsible-name" placeholder="Ex: Maria (Lider de Frios)">
                         </div>
                     </div>
-
-                    <div id="categories-container">
-                        <!-- Categorias e itens populados via JS -->
-                    </div>
-
-                    <!-- Hidden file input for photo upload -->
-                    <input type="file" id="photo-upload-input" accept="image/*" capture="environment"
-                        style="display:none;">
-
+                    <div id="categories-container"></div>
+                    <input type="file" id="photo-upload-input" accept="image/*" capture="environment" style="display:none;">
                     <div class="modal-footer" style="margin-top:24px;">
-                        <button class="btn btn-outline" id="btn-prev-step-3">Voltar aos Departamentos</button>
-                        <button class="btn btn-primary" id="btn-save-dept">Salvar Departamento <i
-                                class="ph ph-floppy-disk"></i></button>
+                        <button class="btn btn-outline" id="btn-prev-step-3">Voltar as Categorias</button>
+                        <button class="btn btn-primary" id="btn-save-dept">Salvar Categoria <i class="ph ph-floppy-disk"></i></button>
                     </div>
                 </div>
             </div>
 
-            <!-- ==============================
-                 2. DASHBOARD VIEW
-            =============================== -->
+            <!-- DASHBOARD VIEW -->
             <div id="dashboard-view" class="page content-section hidden">
                 <div class="page-header">
-                    <div>
-                        <h2>Dashboard</h2>
-                        <p>Visão geral de performance e auditorias</p>
-                    </div>
-                    <div class="form-group" style="min-width: 200px; margin-bottom: 0;">
-                        <select id="dash-store-filter">
-                            <option value="all">Todas as Lojas</option>
-                            <!-- Lojas populadas via JS -->
-                        </select>
+                    <div><h2>Dashboard</h2><p>Viso geral de performance e auditorias</p></div>
+                    <div style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-size: 0.75rem; margin-bottom: 4px; display: block;">Período De</label>
+                            <input type="date" id="dash-date-start" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--glass-bg); color: var(--text-body);">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-size: 0.75rem; margin-bottom: 4px; display: block;">Até</label>
+                            <input type="date" id="dash-date-end" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--glass-bg); color: var(--text-body);">
+                        </div>
+                        <div class="form-group" style="min-width:180px; margin-bottom:0;">
+                            <label style="font-size: 0.75rem; margin-bottom: 4px; display: block;">Filial</label>
+                            <select id="dash-store-filter" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--glass-bg); color: var(--text-body); width: 100%;">
+                                <option value="all">Todas as Lojas</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-apply-dash-filters" style="height: 38px;">Aplicar</button>
                     </div>
                 </div>
-
                 <div class="tabs">
                     <button class="tab-btn active" data-tab="dash-overview">Visão Geral</button>
                     <button class="tab-btn" data-tab="dash-evolution">Evolução</button>
                     <button class="tab-btn" data-tab="dash-departments">Departamentos</button>
+                    <button class="tab-btn" data-tab="dash-ranking">Ranking</button>
                 </div>
-
-                <!-- Visão Geral -->
                 <div id="dash-overview" class="tab-content active">
                     <div class="card-grid">
-                        <div class="glass kpi-card kpi-primary">
-                            <span class="kpi-label"><i class="ph ph-files"></i> Total Auditorias</span>
-                            <span class="kpi-value" id="kpi-total-audits">0</span>
-                        </div>
-                        <div class="glass kpi-card kpi-accent">
-                            <span class="kpi-label"><i class="ph ph-target"></i> Média Geral</span>
-                            <span class="kpi-value" id="kpi-avg-score">0%</span>
-                        </div>
-                        <div class="glass kpi-card kpi-secondary">
-                            <span class="kpi-label"><i class="ph ph-storefront"></i> Lojas Avaliadas</span>
-                            <span class="kpi-value" id="kpi-stores-audited">0</span>
-                        </div>
-                        <div class="glass kpi-card kpi-danger">
-                            <span class="kpi-label"><i class="ph ph-warning-circle"></i> Itens Críticos</span>
-                            <span class="kpi-value" id="kpi-critical-issues">0</span>
-                        </div>
+                        <div class="glass kpi-card kpi-primary"><span class="kpi-label"><i class="ph ph-files"></i> Total Auditorias</span><span class="kpi-value" id="kpi-total-audits">0</span></div>
+                        <div class="glass kpi-card kpi-accent"><span class="kpi-label"><i class="ph ph-target"></i> Media Geral</span><span class="kpi-value" id="kpi-avg-score">0%</span></div>
+                        <div class="glass kpi-card kpi-secondary"><span class="kpi-label"><i class="ph ph-storefront"></i> Lojas Avaliadas</span><span class="kpi-value" id="kpi-stores-audited">0</span></div>
+                        <div class="glass kpi-card kpi-danger"><span class="kpi-label"><i class="ph ph-warning-circle"></i> Itens Criticos</span><span class="kpi-value" id="kpi-critical-issues">0</span></div>
                     </div>
-
                     <div class="form-row">
-                        <div class="glass" style="padding: 20px; flex: 2;">
-                            <h3 style="margin-bottom: 16px; font-size: 1.1rem;">Tendência de Performance</h3>
-                            <canvas id="chart-evolution" height="250"></canvas>
+                        <div class="glass" style="padding:20px;flex:2; display:flex; flex-direction:column;">
+                            <h3 style="margin-bottom:16px;font-size:1.1rem; flex-shrink:0;">Tendência de Performance</h3>
+                            <div style="flex:1; position:relative; min-height: 250px; max-height: 300px;">
+                                <canvas id="chart-evolution"></canvas>
+                            </div>
                         </div>
-                        <div class="glass"
-                            style="padding: 20px; flex: 1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-                            <h3 style="margin-bottom: 16px; font-size: 1.1rem; width:100%; text-align:left;">
-                                Classificação Geral</h3>
-                            <div style="width: 200px; height: 200px; position:relative;">
+                        <div class="glass" style="padding:20px;flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+                            <h3 style="margin-bottom:16px;font-size:1.1rem;width:100%;text-align:left;">Classificacao Geral</h3>
+                            <div style="width:200px;height:200px;position:relative;">
                                 <canvas id="chart-classification"></canvas>
-                                <div
-                                    style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center;">
-                                    <span style="font-size: 1.5rem; font-weight:bold; font-family:var(--font-heading);"
-                                        id="gauge-score">0%</span>
+                                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+                                    <span style="font-size:1.5rem;font-weight:bold;font-family:var(--font-heading);" id="gauge-score">0%</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Evolução -->
                 <div id="dash-evolution" class="tab-content">
-                    <div class="glass" style="padding: 20px;">
-                        <h3 style="margin-bottom: 16px; font-size: 1.1rem;">Comparativo Histórico</h3>
-                        <canvas id="chart-history" height="300"></canvas>
+                    <div class="glass" style="padding:20px;">
+                        <h3 style="margin-bottom:16px;font-size:1.1rem;">Comparativo Historico</h3>
+                        <div style="position:relative; height: 300px; width: 100%;">
+                            <canvas id="chart-history"></canvas>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Departamentos -->
                 <div id="dash-departments" class="tab-content">
-                    <div class="glass" style="padding: 20px;">
-                        <h3 style="margin-bottom: 16px; font-size: 1.1rem;">Performance por Departamento</h3>
-                        <canvas id="chart-departments" height="300"></canvas>
+                    <div class="glass" style="padding:20px;">
+                        <h3 style="margin-bottom:16px;font-size:1.1rem;">Performance por Departamento</h3>
+                        <div style="position:relative; height: 300px; width: 100%;">
+                            <canvas id="chart-departments"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div id="dash-ranking" class="tab-content">
+                    <div class="form-row">
+                        <div class="glass" style="padding:20px; flex: 2;">
+                            <h3 style="margin-bottom:16px;font-size:1.1rem;">Ranking de Performance por Filial</h3>
+                            <div style="position:relative; height: 300px; width: 100%;">
+                                <canvas id="chart-ranking"></canvas>
+                            </div>
+                        </div>
+                        <div class="glass" style="padding:20px; flex: 1.5;">
+                            <h3 style="margin-bottom:16px;font-size:1.1rem;">Quadro de Líderes</h3>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table" style="font-size: 0.85rem;">
+                                    <thead>
+                                        <tr>
+                                            <th>Posiço</th>
+                                            <th>Loja</th>
+                                            <th>Média</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dash-ranking-table-body">
+                                        <!-- Populado via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ==============================
-                 3. HISTÓRICO DE AUDITORIAS
-            =============================== -->
+            <!-- HISTORICO DE AUDITORIAS -->
             <div id="audits-list-view" class="page content-section hidden">
-                <div class="page-header">
-                    <div>
-                        <h2>Histórico</h2>
-                        <p>Lista de todas as auditorias realizadas</p>
-                    </div>
-                </div>
+                <div class="page-header"><div><h2>Historico</h2><p>Lista de todas as auditorias realizadas</p></div></div>
 
                 <div class="glass" style="padding: 20px; overflow-x: auto;">
                     <table class="data-table">
@@ -329,7 +442,7 @@
                                 <th>Loja</th>
                                 <th>Auditor</th>
                                 <th>Score</th>
-                                <th>Classificação</th>
+                                <th>Classificaço</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -340,6 +453,32 @@
                 </div>
             </div>
 
+            <!-- AGENDAMENTOS -->
+            <div id="scheduled-audits-view" class="page content-section hidden">
+                <div class="page-header">
+                    <div>
+                        <h2>Auditorias Agendadas</h2>
+                        <p>Controle de lojas que necessitam de visita de retorno</p>
+                    </div>
+                </div>
+
+                <div class="glass" style="padding: 20px; overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Data Agendada</th>
+                                <th>Loja / Local</th>
+                                <th>Auditor</th>
+                                <th>Status</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduled-audits-table-body">
+                            <!-- Dinâmico via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             <!-- ==============================
                  4. PAINEL ADMIN
             =============================== -->
@@ -351,55 +490,230 @@
                     </div>
                 </div>
 
-                <div class="tabs">
+                <div class="tabs" style="flex-wrap: wrap;">
                     <button class="tab-btn active" data-tab="admin-companies">Empresas</button>
                     <button class="tab-btn" data-tab="admin-stores">Filiais</button>
                     <button class="tab-btn" data-tab="admin-depts">Departamentos</button>
+                    <button class="tab-btn" data-tab="admin-categories">Categorias</button>
                     <button class="tab-btn" data-tab="admin-checklist">Checklists</button>
                     <button class="tab-btn" data-tab="admin-users">Usuários</button>
+                    <button class="tab-btn" data-tab="admin-settings"><i class="ph ph-gear-six"></i> Configurações</button>
                 </div>
 
                 <!-- Admin Tab: Empresas -->
                 <div id="admin-companies" class="tab-content active">
+                    <div class="glass hidden" style="padding: 24px; margin-bottom: 24px;" id="admin-company-form-container">
+                        <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 20px;">
+                            <i class="ph ph-buildings" style="font-size: 1.5rem;"></i>
+                            <h3 style="font-size: 1.25rem;">Nova Empresa</h3>
+                        </div>
+                        <p style="color: var(--text-muted); margin-bottom: 24px;">Cadastre as empresas (matriz/holding) que utilizaro o sistema</p>
+                        
+                        <form id="admin-company-form">
+                            <h4 style="margin-bottom: 16px;">Informações da Empresa</h4>
+                            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 16px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Nome Fantasia *</label>
+                                    <input type="text" id="comp-name" required>
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Razo Social</label>
+                                    <input type="text" id="comp-social">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 24px; width: 50%;">
+                                <label>CNPJ *</label>
+                                <input type="text" id="comp-cnpj" placeholder="00.000.000/0000-00" required>
+                            </div>
+
+                            <h4 style="margin-bottom: 16px;">Localizaço Matriz</h4>
+                            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 24px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Cidade</label>
+                                    <input type="text" id="comp-city" placeholder="Ex: So Paulo">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Endereço</label>
+                                    <input type="text" id="comp-address" placeholder="Rua, número, bairro">
+                                </div>
+                            </div>
+
+                            <h4 style="margin-bottom: 16px;">Contato</h4>
+                            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 24px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Telefone</label>
+                                    <input type="text" id="comp-phone" placeholder="(00) 00000-0000">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>E-mail</label>
+                                    <input type="email" id="comp-email" placeholder="contato@empresa.com">
+                                </div>
+                            </div>
+
+                            <h4 style="margin-bottom: 16px;">Identidade Visual</h4>
+                            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 16px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Cor Primária</label>
+                                    <input type="color" id="comp-color-primary" value="#10b981" style="width: 100%; height: 40px; padding: 2px;">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Cor Secundária</label>
+                                    <input type="color" id="comp-color-secondary" value="#3b82f6" style="width: 100%; height: 40px; padding: 2px;">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Cor Destaque</label>
+                                    <input type="color" id="comp-color-accent" value="#f59e0b" style="width: 100%; height: 40px; padding: 2px;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 24px;">
+                                <label>Logo da Empresa</label>
+                                <input type="file" id="comp-logo-input" accept="image/*" class="file-input">
+                                <input type="hidden" id="comp-logo-data">
+                            </div>
+
+                            <div style="display: flex; gap: 12px;">
+                                <button type="submit" class="btn btn-primary" id="btn-save-company">Cadastrar Empresa</button>
+                                <button type="button" class="btn btn-outline" id="btn-cancel-company">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+
                     <div class="glass" style="padding: 20px;">
                         <div style="display:flex; justify-content:space-between; margin-bottom: 16px;">
-                            <h3 style="font-size: 1.1rem;">Lista de Empresas</h3>
-                            <button class="btn btn-primary" id="btn-add-company"><i class="ph ph-plus"></i> Nova
-                                Empresa</button>
+                            <div>
+                                <h3 style="font-size: 1.1rem;">Empresas Cadastradas</h3>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; padding-top: 4px;">Visualize e gerencie todas as empresas do sistema</p>
+                            </div>
+                            <button class="btn btn-primary" id="btn-add-company-show"><i class="ph ph-plus"></i> Nova Empresa</button>
                         </div>
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Nome Fantasia</th>
-                                    <th>CNPJ</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-companies-body"></tbody>
-                        </table>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Logo</th>
+                                        <th>Empresa</th>
+                                        <th>CNPJ</th>
+                                        <th>Localização</th>
+                                        <th>Contato</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-companies-body"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Admin Tab: Lojas -->
+                <!-- Admin Tab: Filiais -->
                 <div id="admin-stores" class="tab-content">
+                    <div class="glass hidden" style="padding: 24px; margin-bottom: 24px;" id="admin-store-form-container">
+                        <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 20px;">
+                            <i class="ph ph-storefront" style="font-size: 1.5rem;"></i>
+                            <h3 style="font-size: 1.25rem;">Nova Filial</h3>
+                        </div>
+                        <p style="color: var(--text-muted); margin-bottom: 24px;">Cadastre uma nova filial e vincule a uma matriz</p>
+                        
+                        <form id="admin-store-form">
+                            <h4 style="margin-bottom: 16px;">Informações Básicas</h4>
+                            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 16px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Nome da Filial *</label>
+                                    <input type="text" id="store-name" placeholder="Ex: Filial Centro" required>
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Código</label>
+                                    <input type="text" id="store-code" placeholder="Ex: FIL001">
+                                </div>
+                            </div>
+                            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 24px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>CNPJ *</label>
+                                    <input type="text" id="store-cnpj" placeholder="00.000.000/0000-00" required>
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Data de Inauguração</label>
+                                    <input type="date" id="store-date-inauguration">
+                                </div>
+                            </div>
+
+                            <h4 style="margin-bottom: 16px;">Localização</h4>
+                            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 24px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Cidade *</label>
+                                    <input type="text" id="store-city" placeholder="Ex: São Paulo" required>
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Endereço Completo *</label>
+                                    <input type="text" id="store-address" placeholder="Rua, número, bairro" required>
+                                </div>
+                            </div>
+
+                            <h4 style="margin-bottom: 16px;">Contato e Gesto</h4>
+                            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 16px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Gerente Responsável (Usuário)</label>
+                                    <select id="store-manager-id">
+                                        <option value="">Selecione um gerente...</option>
+                                        <!-- Preenchido via JS -->
+                                    </select>
+                                    <small style="color:var(--text-muted); font-size:0.75rem;">Vincule um usuário com perfil de gerente a esta lojá</small>
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Nome do Gerente (texto)</label>
+                                    <input type="text" id="store-manager-name" placeholder="Nome do gerente" readonly style="background-color: rgba(255,255,255,0.05);">
+                                    <small style="color:var(--text-muted); font-size:0.75rem;">Preenchido automaticamente ao selecionar um gerente</small>
+                                </div>
+                            </div>
+                            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 24px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Telefone</label>
+                                    <input type="text" id="store-phone" placeholder="(00) 00000-0000">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>E-mail</label>
+                                    <input type="email" id="store-email" placeholder="filial@empresa.com">
+                                </div>
+                            </div>
+
+                            <h4 style="margin-bottom: 16px;">Vínculo com Empresa</h4>
+                            <div class="form-group" style="margin-bottom: 24px;">
+                                <label>Empresa *</label>
+                                <select id="store-company-id" required>
+                                    <option value="" disabled selected>Selecione a empresa...</option>
+                                </select>
+                            </div>
+
+                            <div style="display: flex; gap: 12px;">
+                                <button type="submit" class="btn btn-primary" id="btn-save-store">Cadastrar Filial</button>
+                                <button type="button" class="btn btn-outline" id="btn-cancel-store">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+
                     <div class="glass" style="padding: 20px;">
                         <div style="display:flex; justify-content:space-between; margin-bottom: 16px;">
-                            <h3 style="font-size: 1.1rem;">Lista de Filiais</h3>
-                            <button class="btn btn-primary" id="btn-add-store"><i class="ph ph-plus"></i> Nova
-                                Loja</button>
+                            <div>
+                                <h3 style="font-size: 1.1rem;">Filiais Cadastradas</h3>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; padding-top: 4px;">Gerencie as unidades e lojas</p>
+                            </div>
+                            <button class="btn btn-primary" id="btn-add-store-show"><i class="ph ph-plus"></i> Nova Filial</button>
                         </div>
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Código</th>
-                                    <th>Nome</th>
+                                    <th>Empresa (Matriz)</th>
+                                    <th>Cód</th>
+                                    <th>Nome da Filial</th>
                                     <th>Cidade</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="admin-stores-body"></tbody>
                         </table>
+                    </div>
+                </div>
                         <!-- Outras abas admin podem ser expandidas conforme necessidade -->
                         <div id="admin-depts" class="tab-content">
                             <div class="glass" style="padding: 20px;">
@@ -411,7 +725,7 @@
                                 <table class="data-table">
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
+                                            <th style="width: 80px; text-align: center;">Ícone</th>
                                             <th>Nome</th>
                                             <th>Ações</th>
                                         </tr>
@@ -420,18 +734,128 @@
                                 </table>
                             </div>
                         </div>
-                        <div id="admin-checklist" class="tab-content">
+
+                        <!-- Admin Tab: Categorias -->
+                        <div id="admin-categories" class="tab-content">
+                            <!-- Formulário de Nova Categoria -->
+                            <div class="glass" style="padding: 24px; margin-bottom: 20px;">
+                                <h3 style="font-size:1.1rem; margin-bottom:20px;">Nova Categoria</h3>
+
+                                <form id="category-item-form">
+                                    <div class="form-group" style="margin-bottom:16px;">
+                                        <label style="color:var(--primary); font-size:0.85rem; font-weight:600;">Nome da Categoria</label>
+                                        <input type="text" id="cat-name" placeholder="Ex: Limpeza / Organização" required style="border-color: var(--primary);">
+                                    </div>
+
+                                    <div class="form-row" style="display:flex; gap:16px; margin-bottom:16px;">
+                                        <div class="form-group" style="flex:1;">
+                                            <label>Departamento</label>
+                                            <select id="cat-dept-id" required>
+                                                <option value="">Selecione...</option>
+                                                <!-- Populado via JS -->
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="flex:1;">
+                                            <label style="color:var(--danger); font-size:0.85rem; font-weight:600;">Peso (0-10)</label>
+                                            <input type="number" id="cat-weight-value" placeholder="1.0" min="0" max="100" step="0.1" required style="border-color: var(--danger);">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row" style="display:flex; gap:24px; align-items:center; margin-bottom:20px; flex-wrap:wrap;">
+                                        <div class="form-group" style="flex:1; min-width:120px;">
+                                            <label>Ordem</label>
+                                            <input type="number" id="cat-order" placeholder="Automático" min="1">
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:10px; padding-top:8px;">
+                                            <input type="checkbox" id="cat-is-active" checked style="width:18px; height:18px; accent-color:var(--primary);">
+                                            <label for="cat-is-active" style="margin:0; cursor:pointer;">Categoria ativa</label>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ph ph-plus"></i> Adicionar
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Tabela de Categorias -->
                             <div class="glass" style="padding: 20px;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom: 16px;">
-                                    <h3 style="font-size: 1.1rem;">Itens de Checklist</h3>
-                                    <button class="btn btn-primary" id="btn-add-checklist"><i class="ph ph-plus"></i>
-                                        Novo Item</button>
-                                </div>
+                                <h3 style="font-size: 1rem; margin-bottom: 16px;">Categorias Cadastradas (<span id="categories-count">0</span>)</h3>
                                 <table class="data-table">
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
+                                            <th>Ordem</th>
+                                            <th>Nome</th>
+                                            <th>Departamento</th>
+                                            <th>Peso</th>
+                                            <th>Status</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-categories-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="admin-checklist" class="tab-content">
+                            <!-- Formulário de Novo Item de Checklist -->
+                            <div class="glass" style="padding: 24px; margin-bottom: 20px;">
+                                <div style="display:flex; align-items:center; gap:8px; margin-bottom:20px;">
+                                    <i class="ph ph-clipboard-text" style="font-size:1.4rem; color:var(--primary);"></i>
+                                    <h3 style="font-size:1.1rem;">Novo Item de Checklist</h3>
+                                </div>
+
+                                <form id="checklist-item-form">
+                                    <div class="form-group" style="margin-bottom:16px;">
+                                        <label style="color:var(--primary); font-size:0.85rem; font-weight:600;">Pergunta</label>
+                                        <input type="text" id="cl-question" placeholder="Ex: Produtos esto etiquetados com preço" required style="border-color: var(--primary);">
+                                    </div>
+
+                                    <div class="form-row" style="display:flex; gap:16px; margin-bottom:16px;">
+                                        <div class="form-group" style="flex:1;">
+                                            <label>Departamento</label>
+                                            <select id="cl-dept-id">
+                                                <option value="">Selecione...</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="flex:1;">
+                                            <label>Categoria <small style="color:var(--text-muted);">(opcional)</small></label>
+                                            <select id="cl-cat-id" disabled>
+                                                <option value="">Selecione um departamento primeiro</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row" style="display:flex; gap:24px; align-items:center; margin-bottom:20px; flex-wrap:wrap;">
+                                        <div class="form-group" style="flex:1; min-width:120px;">
+                                            <label>Ordem</label>
+                                            <input type="number" id="cl-order" placeholder="Automático" min="1">
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:10px; padding-top:8px;">
+                                            <input type="checkbox" id="cl-is-active" checked style="width:18px; height:18px; accent-color:var(--primary);">
+                                            <label for="cl-is-active" style="margin:0; cursor:pointer;">Item ativo</label>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:10px; padding-top:8px;">
+                                            <input type="checkbox" id="cl-is-critical" style="width:18px; height:18px; accent-color:var(--danger);">
+                                            <label for="cl-is-critical" style="margin:0; cursor:pointer; color:var(--danger);">Item crítico</label>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ph ph-plus"></i> Adicionar
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Tabela de Itens Cadastrados -->
+                            <div class="glass" style="padding: 20px;">
+                                <h3 style="font-size: 1rem; margin-bottom: 16px;">Itens Cadastrados</h3>
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
                                             <th>Pergunta</th>
+                                            <th>Departamento</th>
+                                            <th>Categoria</th>
+                                            <th>Ordem</th>
                                             <th>Crítico</th>
                                             <th>Ações</th>
                                         </tr>
@@ -442,7 +866,7 @@
                         </div>
                         <div id="admin-users" class="tab-content">
                             <div class="glass" style="padding: 20px;">
-                                <h3 style="font-size: 1.1rem; margin-bottom: 16px;">Aprovação de Usuários</h3>
+                                <h3 style="font-size: 1.1rem; margin-bottom: 16px;">Aprovaço de Usuários</h3>
                                 <table class="data-table">
                                     <thead>
                                         <tr>
@@ -457,60 +881,166 @@
                                 </table>
                             </div>
                         </div>
+                        
+                        <!-- Modal Aprovação de Usuários -->
+                        <div id="modal-approve-user" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center;">
+                            <div class="glass" style="padding:24px; width: 400px; max-width:90%;">
+                                <h3 style="margin-bottom:16px;">Aprovar Usuário</h3>
+                                <input type="hidden" id="approve-user-id">
+                                <div class="form-group">
+                                    <label>Perfil de Acesso</label>
+                                    <select id="approve-role" required>
+                                        <option value="auditor">Auditor</option>
+                                        <option value="manager">Gerente de Loja</option>
+                                        <option value="admin">Administrador</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 24px;">
+                                    <label>Vincular a Empresa</label>
+                                    <select id="approve-company">
+                                        <option value="">Sem empresa</option>
+                                    </select>
+                                </div>
+                                <div style="display:flex; justify-content:flex-end; gap:12px;">
+                                    <button class="btn btn-outline" id="btn-cancel-approve">Cancelar</button>
+                                    <button class="btn btn-primary" id="btn-confirm-approve">Aprovar</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    <!-- Admin Tab: Configurações EmailJS -->
+                    <div id="admin-settings" class="tab-content">
+                        <div class="glass" style="padding: 24px;">
+                            <h3 style="margin-bottom: 16px;">Configurações Gerais (Envio de E-mail)</h3>
+                            <p style="color: var(--text-muted); margin-bottom: 24px;">Configurações do EmailJS para envio de relatórios automáticos.</p>
+                            
+                            <form id="email-config-form">
+                                <div class="form-group" style="margin-bottom: 16px;">
+                                    <label>Service ID (EmailJS)</label>
+                                    <input type="text" id="cfg-email-service" placeholder="Ex: service_xxxxxx">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 16px;">
+                                    <label>Template ID (EmailJS)</label>
+                                    <input type="text" id="cfg-email-template" placeholder="Ex: template_xxxxxx">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 24px;">
+                                    <label>Public Key (User ID)</label>
+                                    <input type="text" id="cfg-email-public-key" placeholder="Sua chave pública">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Salvar Configurações</button>
+                            </form>
+                        </div>
                     </div>
+
+                </div> <!-- End admin-view -->
 
                     <!-- ==============================
                  5. RELATÓRIO VIEW
             =============================== -->
                     <div id="report-view" class="page content-section hidden">
-                        <div class="page-header">
+                        <img id="report-watermark" src="" alt="Watermark">
+                        <div class="page-header no-print">
                             <div>
                                 <h2>Relatório de Auditoria</h2>
-                                <p id="report-subtitle">Detalhes da avaliação</p>
+                                <p id="report-subtitle">Visualizaço oficial dos resultados</p>
                             </div>
                             <div style="display:flex; gap:10px;">
-                                <button class="btn btn-outline" id="btn-back-report"><i class="ph ph-arrow-left"></i>
-                                    Voltar</button>
-                                <button class="btn btn-primary" onclick="window.print()"><i class="ph ph-printer"></i>
-                                    Imprimir
-                                    / PDF</button>
+                                <button class="btn btn-outline" id="btn-back-report"><i class="ph ph-arrow-left"></i> Voltar</button>
+                                <button class="btn btn-primary" onclick="window.print()"><i class="ph ph-printer"></i> Imprimir / PDF</button>
                             </div>
                         </div>
 
+                        <!-- Header Premium do Relatório (Impresso) -->
                         <div class="glass" style="padding: 24px; margin-bottom: 24px;">
-                            <div
-                                style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 20px;">
-                                <div>
-                                    <h1 style="font-size: 2rem; margin-bottom: 4px;" id="report-store-name">Nome da Loja
-                                    </h1>
-                                    <p style="color: var(--text-muted);" id="report-date">Data: 00/00/0000 | Auditor:
-                                        Nome</p>
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 2px solid var(--primary); padding-bottom: 20px; margin-bottom: 20px;">
+                                <div style="display:flex; gap:20px; align-items:center;">
+                                    <div id="report-company-logo" style="width: 160px; height: 120px; background: var(--primary-dept-bg); border-radius: 12px; display:flex; align-items:center; justify-content:center; border: 1px solid var(--primary);">
+                                        <i class="ph ph-buildings" style="font-size: 2.5rem; color: var(--primary);"></i>
+                                    </div>
+                                    <div>
+                                        <h4 id="report-company-name" style="text-transform: uppercase; color: var(--primary); letter-spacing: 1px; margin-bottom: 4px;">Auditaí Corporate</h4>
+                                        <h1 style="font-size: 2.2rem; margin: 0;" id="report-store-name">Nome da Filial</h1>
+                                        <p style="font-weight: 600; color: var(--text-body); margin-top: 4px; text-transform: uppercase;" id="report-audit-type">AUDITORIA PADRÃO</p>
+                                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+                                            <p style="font-size: 0.85rem; color: var(--text-body);"><i class="ph ph-user-circle-gear"></i> Gerente: <span id="report-manager" style="color: var(--text-body); font-weight:600;">-</span></p>
+                                            <p style="font-size: 0.85rem; color: var(--text-body);"><i class="ph ph-user-circle"></i> Encarregado: <span id="report-supervisor" style="color: var(--text-body); font-weight:600;">-</span></p>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div style="text-align: right;">
-                                    <div style="font-size: 3rem; font-family: var(--font-heading); font-weight:700; color: var(--primary);"
-                                        id="report-score">0%</div>
-                                    <div class="badge badge-success" id="report-classification">Excelente</div>
+                                    <div style="font-size: 3.5rem; font-family: var(--font-heading); font-weight:800; color: var(--primary); line-height:1;" id="report-score">0%</div>
+                                    <div class="badge badge-success" id="report-classification" style="margin-top: 8px; font-size: 1rem; padding: 6px 16px;">Excelente</div>
+                                    <p style="font-size: 0.75rem; color: var(--text-body); margin-top: 12px;"><i class="ph ph-calendar"></i> <span id="report-date">00/00/0000</span></p>
+                                    <p style="font-size: 0.75rem; color: var(--text-body);"><i class="ph ph-identification-badge"></i> Auditor: <span id="report-auditor">-</span></p>
                                 </div>
                             </div>
 
-                            <h3 style="margin-bottom: 16px;">Resumo por Departamento</h3>
-                            <div id="report-depts-summary" style="display:flex; flex-direction:column; gap:16px;">
+                            <h3 style="margin-bottom: 20px; display:flex; align-items:center; gap:10px;"><i class="ph ph-chart-bar" style="color:var(--primary);"></i> Desempenho por Departamento</h3>
+                            <div id="report-depts-summary" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom: 24px;">
                                 <!-- Barras de progresso dinâmicas -->
+                            </div>
+
+                            <div id="report-followup-container" class="hidden" style="border-top: 1px solid var(--border); padding-top: 24px; margin-top: 24px; margin-bottom: 24px;">
+                                <h3 style="margin-bottom: 16px; color: var(--primary);"><i class="ph ph-arrow-counter-clockwise"></i> Confronto de Auditorias (O que melhorou/piorou)</h3>
+                                <div id="report-followup-comparison" style="display:flex; flex-direction:column; gap:16px;">
+                                    <!-- Comparativo antes/depois -->
+                                </div>
+                            </div>
+
+                            <div id="report-return-action-container" style="border-top: 1px solid var(--border); padding-top: 20px; margin-top: 20px;">
+                                <h3 style="color: var(--primary); margin-bottom: 10px;"><i class="ph ph-calendar-check"></i> Retorno da Auditoria</h3>
+                                <div style="background: var(--primary-dept-bg); padding: 15px; border-radius: 8px; border: 1px dashed var(--primary);">
+                                    <p style="font-weight: 700; font-size: 1.1rem; color: var(--primary);">DATA OBRIGATÓRIA DE RETORNO: <span id="report-return-date">00/00/0000</span></p>
+                                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 4px;">O auditor deverá retornar nesta data para validar as correções dos pontos críticos.</p>
+                                </div>
                             </div>
                         </div>
 
                         <div class="glass" style="padding: 24px;">
-                            <h3 style="margin-bottom: 16px; color: var(--danger);"><i class="ph ph-warning"></i> Pontos
-                                Críticos
-                                e Observações (Ruim)</h3>
+                            <h3 style="margin-bottom: 16px; color: var(--danger);"><i class="ph ph-warning"></i> Pontos Críticos e Observações</h3>
                             <div id="report-critical-items" style="display:flex; flex-direction:column; gap:12px;">
                                 <!-- Lista de pontos a melhorar -->
+                            </div>
+                        </div>
+
+                        <!-- Seço de Assinaturas -->
+                        <div class="glass report-no-break" style="padding: 40px 24px 24px 24px; margin-top: 40px; text-align: center; border:none !important; box-shadow:none !important;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; align-items: end; margin-top: 50px;">
+                                <div>
+                                    <div style="border-bottom: 1px solid var(--text-body); width: 80%; margin: 0 auto 10px auto;"></div>
+                                    <p style="font-weight: 600; font-size: 0.95rem; color: var(--text-body); margin: 0;">Auditor</p>
+                                </div>
+                                <div>
+                                    <div style="border-bottom: 1px solid var(--text-body); width: 80%; margin: 0 auto 10px auto;"></div>
+                                    <p style="font-weight: 600; font-size: 0.95rem; color: var(--text-body); margin: 0;">Encarregado</p>
+                                </div>
+                                <div>
+                                    <div style="border-bottom: 1px solid var(--text-body); width: 80%; margin: 0 auto 10px auto;"></div>
+                                    <p style="font-weight: 600; font-size: 0.95rem; color: var(--text-body); margin: 0;">Gerente</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
         </main>
     </section>
+
+    <!-- Modal for Return Date -->
+    <div id="modal-return-date" class="modal-overlay hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center;">
+        <div class="glass modal" style="max-width: 400px; padding: 24px; text-align: center;">
+            <i class="ph ph-warning-circle" style="font-size: 3rem; color: var(--accent); margin-bottom: 12px;"></i>
+            <h3 style="margin-bottom: 8px;">Atenção: Pontos Críticos</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Você avaliou itens como Ruim ou Insuficiente. É obrigatório agendar uma data de retorno para verificaço.</p>
+            <div class="form-group" style="text-align: left;">
+                <label>Data Obrigatória de Retorno *</label>
+                <input type="date" id="input-return-date" required>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-outline" style="flex:1;" onclick="document.getElementById('modal-return-date').classList.add('hidden')">Cancelar</button>
+                <button class="btn btn-primary" style="flex:1;" id="btn-confirm-return-date">Confirmar Data</button>
+            </div>
+        </div>
+    </div>
 
     <!-- App Logic -->
     <script src="app.js"></script>

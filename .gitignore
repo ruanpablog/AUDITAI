@@ -1,0 +1,17 @@
+# Ignorar scripts temporários de correções passadas
+__*.js
+fix*.js
+force*.js
+new*.js
+old*.js
+origin*.js
+patch*.js
+rebuild*.js
+
+# Exceção explícita para o arquivo principal 
+!app.js
+
+# Ignorar pastas de sistema
+node_modules/
+.env
+.DS_Store
