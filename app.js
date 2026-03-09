@@ -165,146 +165,6 @@
     }
 
 
-    // --- State Management (LocalStorage DB) ---
-    // Simulating the DB requested in Lovable prompt
-    const defaultDepartments = [
-        { id: 'd1', name: 'Açougue', weight: 1, color: '#ef4444' },
-        { id: 'd2', name: 'Hortifruti', weight: 1, color: '#22c55e' },
-        { id: 'd3', name: 'Frios', weight: 1, color: '#06b6d4' },
-        { id: 'd4', name: 'Área de Vendas', weight: 1, color: '#f59e0b' },
-        { id: 'd5', name: 'Frente de Loja', weight: 1, color: '#a855f7' },
-        { id: 'd6', name: 'Depósito', weight: 1, color: '#64748b' },
-        { id: 'd7', name: 'Recebimento', weight: 1, color: '#6366f1' },
-        { id: 'd8', name: 'Avarias', weight: 1, color: '#ec4899' },
-        { id: 'd9', name: 'Financeiro', weight: 1, color: '#10b981' },
-        { id: 'd10', name: 'Logistica Entrada', weight: 1, color: '#3b82f6' }
-    ];
-
-    const defaultCategories = [
-        { id: 'c1', name: 'Higiene e Sanificação', dept_id: 'd1', weight_value: 10, status: 'Ativo' },
-        { id: 'c2', name: 'Controle de Temperaturas', dept_id: 'd1', weight_value: 10, status: 'Ativo' },
-        { id: 'c3', name: 'Qualidade, Validade e Frescor', dept_id: 'd1', weight_value: 9, status: 'Ativo' },
-        { id: 'c4', name: 'Organização e Exposição', dept_id: 'd1', weight_value: 7, status: 'Ativo' },
-
-        { id: 'c5', name: 'Frescor e Qualidade dos Itens', dept_id: 'd2', weight_value: 9, status: 'Ativo' },
-        { id: 'c6', name: 'Organização e Volume das Bancadas', dept_id: 'd2', weight_value: 8, status: 'Ativo' },
-        { id: 'c7', name: 'Limpeza do Setor e Câmaras', dept_id: 'd2', weight_value: 7, status: 'Ativo' },
-        { id: 'c8', name: 'Controle e Prevenção de Perdas', dept_id: 'd2', weight_value: 8, status: 'Ativo' },
-
-        { id: 'c9', name: 'Cadeia de Frio e Temperaturas', dept_id: 'd3', weight_value: 10, status: 'Ativo' },
-        { id: 'c10', name: 'Controle Rigoroso de Validade', dept_id: 'd3', weight_value: 10, status: 'Ativo' },
-        { id: 'c11', name: 'Boas Práticas de Fatiamento', dept_id: 'd3', weight_value: 9, status: 'Ativo' },
-        { id: 'c12', name: 'Abastecimento e Precificação', dept_id: 'd3', weight_value: 7, status: 'Ativo' },
-
-        { id: 'c13', name: 'Limpeza de Gôndolas e Corredores', dept_id: 'd4', weight_value: 7, status: 'Ativo' },
-        { id: 'c14', name: 'Precificação e Sinalização', dept_id: 'd4', weight_value: 9, status: 'Ativo' },
-        { id: 'c15', name: 'Reposição e Frenteamento (Layout)', dept_id: 'd4', weight_value: 8, status: 'Ativo' },
-        { id: 'c16', name: 'Abordagem e Atendimento', dept_id: 'd4', weight_value: 7, status: 'Ativo' },
-
-        { id: 'c17', name: 'Saída de Mercadorias e Conferência', dept_id: 'd5', weight_value: 10, status: 'Ativo' },
-        { id: 'c18', name: 'Outras Vendas (Delivery / iFood)', dept_id: 'd5', weight_value: 8, status: 'Ativo' },
-        { id: 'c19', name: 'Vendas Balcão e Encomendas', dept_id: 'd5', weight_value: 7, status: 'Ativo' },
-        { id: 'c20', name: 'Padrão de Atendimento (Checkout)', dept_id: 'd5', weight_value: 9, status: 'Ativo' },
-
-        { id: 'c21', name: 'Organização e Endereçamento', dept_id: 'd6', weight_value: 8, status: 'Ativo' },
-        { id: 'c22', name: 'Condições de Armazenamento', dept_id: 'd6', weight_value: 10, status: 'Ativo' },
-        { id: 'c23', name: 'Sistema PEPS (Rodízio)', dept_id: 'd6', weight_value: 9, status: 'Ativo' },
-        { id: 'c24', name: 'Limpeza e Descarte de Caixas', dept_id: 'd6', weight_value: 6, status: 'Ativo' },
-
-        { id: 'c25', name: 'Conferência Cega e Qualidade', dept_id: 'd7', weight_value: 10, status: 'Ativo' },
-        { id: 'c26', name: 'Limpeza e Agilidade na Doca', dept_id: 'd7', weight_value: 7, status: 'Ativo' },
-        { id: 'c27', name: 'Triagem Imediata de Perecíveis', dept_id: 'd7', weight_value: 10, status: 'Ativo' },
-
-        { id: 'c28', name: 'Organização e Segregação', dept_id: 'd8', weight_value: 9, status: 'Ativo' },
-        { id: 'c29', name: 'Identificação e Registros não Sist.', dept_id: 'd8', weight_value: 9, status: 'Ativo' },
-        { id: 'c30', name: 'Destinação Correta (Descarte)', dept_id: 'd8', weight_value: 10, status: 'Ativo' }
-    ];
-
-    const defaultChecklistItems = [
-        // Açougue (d1)
-        { id: 'i1', cat_id: 'c1', dept_id: 'd1', question: 'Avalie o nível de higienização dos balcões de atendimento, pias e pisos (livres de resíduos).', eh_critico: true, status: 'Ativo' },
-        { id: 'i2', cat_id: 'c1', dept_id: 'd1', question: 'Avalie a pureza e a limpeza atual das serras, moedores e facas após as trocas de corte.', eh_critico: true, status: 'Ativo' },
-        { id: 'i3', cat_id: 'c1', dept_id: 'd1', question: 'Como está o estado dos ralos do setor (precisam estar limpos, tampados e sem odores)?', eh_critico: false, status: 'Ativo' },
-        { id: 'i4', cat_id: 'c2', dept_id: 'd1', question: 'Avalie a temperatura das câmaras frias de resfriados e congelados segundo o padrão normativo.', eh_critico: true, status: 'Ativo' },
-        { id: 'i5', cat_id: 'c2', dept_id: 'd1', question: 'Como está a aferição de temperatura dos balcões de exposição onde os clientes pegam as bandejas?', eh_critico: true, status: 'Ativo' },
-        { id: 'i6', cat_id: 'c3', dept_id: 'd1', question: 'Avalie o frescor, a cor e o odor das carnes em exposição no balcão e gôndolas.', eh_critico: true, status: 'Ativo' },
-        { id: 'i7', cat_id: 'c3', dept_id: 'd1', question: 'Como está o controle de validade e o recolhimento de carnes vencidas do setor?', eh_critico: true, status: 'Ativo' },
-        { id: 'i8', cat_id: 'c3', dept_id: 'd1', question: 'Avalie a visibilidade de carimbos SIF/SIE e a rastreabilidade nas embalagens primárias.', eh_critico: false, status: 'Ativo' },
-        { id: 'i9', cat_id: 'c4', dept_id: 'd1', question: 'Como está layout visual das carnes na vitrine (bandejas sem sangue, estética)?', eh_critico: false, status: 'Ativo' },
-        { id: 'i10', cat_id: 'c4', dept_id: 'd1', question: 'Avalie a presença e a nitidez dos cartazes/etiquetas de preço nos cortes exportos.', eh_critico: false, status: 'Ativo' },
-
-        // Hortifruit (d2)
-        { id: 'i11', cat_id: 'c5', dept_id: 'd2', question: 'Avalie a frequência de retirada de produtos machucados, murchos, fungados ou furados.', eh_critico: true, status: 'Ativo' },
-        { id: 'i12', cat_id: 'c5', dept_id: 'd2', question: 'Como está a armazenagem e exposição das frutas folhosas para não encostarem no chão?', eh_critico: false, status: 'Ativo' },
-        { id: 'i13', cat_id: 'c6', dept_id: 'd2', question: 'Avalie a sensação de abundância no setor (gôndolas fartas, sem buracos ou caixas).', eh_critico: false, status: 'Ativo' },
-        { id: 'i14', cat_id: 'c6', dept_id: 'd2', question: 'Como está a adequação das etiquetas de preço aos produtos expostos atualmente?', eh_critico: false, status: 'Ativo' },
-        { id: 'i15', cat_id: 'c7', dept_id: 'd2', question: 'Avalie a limpeza do piso deste setor (trânsitavel, seco e sem caldas/restos de folhagens).', eh_critico: false, status: 'Ativo' },
-        { id: 'i16', cat_id: 'c7', dept_id: 'd2', question: 'Como está o cuidado na lavação das caixas plásticas no estoque do Hortifruit?', eh_critico: false, status: 'Ativo' },
-        { id: 'i17', cat_id: 'c8', dept_id: 'd2', question: 'Avalie a rotação dos produtos, conferindo se os maduros lideram as frentes (PEPS).', eh_critico: false, status: 'Ativo' },
-        { id: 'i18', cat_id: 'c8', dept_id: 'd2', question: 'Como está o manuseio dos abastecedores para evitar derrubar as mercadorias?', eh_critico: false, status: 'Ativo' },
-
-        // Frios (d3)
-        { id: 'i19', cat_id: 'c9', dept_id: 'd3', question: 'Avalie se a temperatura informada nos termômetros das ilhas de iogurtes está ideal.', eh_critico: true, status: 'Ativo' },
-        { id: 'i20', cat_id: 'c9', dept_id: 'd3', question: 'Como está o respeito aos limites de "linha de enchimento" nas geladeiras?', eh_critico: false, status: 'Ativo' },
-        { id: 'i21', cat_id: 'c10', dept_id: 'd3', question: 'Avalie a ausência de produtos vencidos nas gôndolas de alta saída.', eh_critico: true, status: 'Ativo' },
-        { id: 'i22', cat_id: 'c10', dept_id: 'd3', question: 'Como está a aplicação pontual de datas de validade nas etiquetas de bandejas de frios?', eh_critico: true, status: 'Ativo' },
-        { id: 'i23', cat_id: 'c11', dept_id: 'd3', question: 'Avalie o uso de EPIs corretos (luva de aço e touca) durante o processo de fatiamento.', eh_critico: true, status: 'Ativo' },
-        { id: 'i24', cat_id: 'c11', dept_id: 'd3', question: 'Como está a assepsia (limpeza) da fatiadora e da tábua entre o queijo e o presunto?', eh_critico: true, status: 'Ativo' },
-        { id: 'i25', cat_id: 'c12', dept_id: 'd3', question: 'Avalie o frenteamento de iogurtes, massas e lácteos nas prateleiras geladas.', eh_critico: false, status: 'Ativo' },
-        { id: 'i26', cat_id: 'c12', dept_id: 'd3', question: 'Como está a conformidade dos preços reais com o layout da geladeira?', eh_critico: false, status: 'Ativo' },
-
-        // Área de Vendas (d4)
-        { id: 'i27', cat_id: 'c13', dept_id: 'd4', question: 'Avalie a ausência absoluta de pó grosso ou manchas no topo dos produtos das gôndolas.', eh_critico: false, status: 'Ativo' },
-        { id: 'i28', cat_id: 'c13', dept_id: 'd4', question: 'Como está a fluidez dos corredores para o cliente sem paletes vazios esquecidos?', eh_critico: false, status: 'Ativo' },
-        { id: 'i29', cat_id: 'c14', dept_id: 'd4', question: 'Avalie se 100% dos produtos visíveis estão com a etiqueta correta na prateleira inferior.', eh_critico: true, status: 'Ativo' },
-        { id: 'i30', cat_id: 'c14', dept_id: 'd4', question: 'Como está a limpeza visual de cartazes (ausência de cartazes rasgados, invertidos)?', eh_critico: false, status: 'Ativo' },
-        { id: 'i31', cat_id: 'c15', dept_id: 'd4', question: 'Avalie o alinhamento frontal das embalagens, com rótulos 100% visíveis ao cliente.', eh_critico: false, status: 'Ativo' },
-        { id: 'i32', cat_id: 'c15', dept_id: 'd4', question: 'Como estão distribuídas as mercadorias para maquiar buracos de ruptura?', eh_critico: false, status: 'Ativo' },
-        { id: 'i33', cat_id: 'c16', dept_id: 'd4', question: 'Avalie a postura e simpatia da equipe ao ser consultada por clientes.', eh_critico: false, status: 'Ativo' },
-        { id: 'i34', cat_id: 'c16', dept_id: 'd4', question: 'Como está o uso unânime e impecável do vestuário e crachá-padrão?', eh_critico: false, status: 'Ativo' },
-
-        // Frente de Loja (d5)
-        { id: 'i35', cat_id: 'c17', dept_id: 'd5', question: 'Avalie se as grandes compras do caixa estão sendo vistoriadas pelos fiscais na porta.', eh_critico: true, status: 'Ativo' },
-        { id: 'i36', cat_id: 'c17', dept_id: 'd5', question: 'Avalie o processo de conferência "embaixo dos carrinhos" esquecidos pelo cliente.', eh_critico: false, status: 'Ativo' },
-        { id: 'i37', cat_id: 'c18', dept_id: 'd5', question: 'Como está a blindagem (lacres na sacola) das vendas feitas pelos Apps/Delivery?', eh_critico: true, status: 'Ativo' },
-        { id: 'i38', cat_id: 'c18', dept_id: 'd5', question: 'Avalie a agilidade e o tempo de empacotamento das encomendas até o entregador.', eh_critico: false, status: 'Ativo' },
-        { id: 'i39', cat_id: 'c19', dept_id: 'd5', question: 'Avalie a fluidez e a velocidade na entrega de encomendas agendadas (Salgados/Pães).', eh_critico: false, status: 'Ativo' },
-        { id: 'i40', cat_id: 'c19', dept_id: 'd5', question: 'Como está o processo de conferência no SAC de Devoluções/Trocas de Mercadoria?', eh_critico: false, status: 'Ativo' },
-        { id: 'i41', cat_id: 'c20', dept_id: 'd5', question: 'Avalie o sorriso ao cumprimentar do caixa e se evitam uso de celular.', eh_critico: false, status: 'Ativo' },
-        { id: 'i42', cat_id: 'c20', dept_id: 'd5', question: 'Avalie se todas as balanças de caixa estão alinhadas, zeradas e estáveis na mesa.', eh_critico: true, status: 'Ativo' },
-        { id: 'i43', cat_id: 'c20', dept_id: 'd5', question: 'Como está a execução das rotinas de sangria, trocos corretos e fundos limpos?', eh_critico: true, status: 'Ativo' },
-
-        // Depósito (d6)
-        { id: 'i44', cat_id: 'c21', dept_id: 'd6', question: 'Avalie se as ruas/saídas de emergência principais não estão bloqueadas.', eh_critico: true, status: 'Ativo' },
-        { id: 'i45', cat_id: 'c21', dept_id: 'd6', question: 'Como as caixas se encontram agrupadas no porta-paletes (ordem lógica visual)?', eh_critico: false, status: 'Ativo' },
-        { id: 'i46', cat_id: 'c22', dept_id: 'd6', question: 'Avalie se TODO produto está livre de contato direto com o papelão no piso e na parede.', eh_critico: true, status: 'Ativo' },
-        { id: 'i47', cat_id: 'c22', dept_id: 'd6', question: 'Como está o ambiente quanto à pragas (ausência de odores e ninhos soltos)?', eh_critico: false, status: 'Ativo' },
-        { id: 'i48', cat_id: 'c23', dept_id: 'd6', question: 'Avalie a ordem de puxada para salão: Retira rigorosamente o lote que expira primeiro?', eh_critico: true, status: 'Ativo' },
-        { id: 'i49', cat_id: 'c23', dept_id: 'd6', question: 'Como as caixas de papelão exibem a marcação lateral da data de validade com escrita legível?', eh_critico: false, status: 'Ativo' },
-        { id: 'i50', cat_id: 'c24', dept_id: 'd6', question: 'Avalie o destino do lixo: papelões estão recolhidos em fardos amarrados no local adequado?', eh_critico: false, status: 'Ativo' },
-        { id: 'i51', cat_id: 'c24', dept_id: 'd6', question: 'Como está a disciplina de empilhamento seguro de caixotes quebrados e embalagens vazias?', eh_critico: false, status: 'Ativo' },
-
-        // Recebimento (d7)
-        { id: 'i52', cat_id: 'c25', dept_id: 'd7', question: 'Avalie a rotina de checar a entrega da transportadora "às cegas" (sem posse da NFe).', eh_critico: true, status: 'Ativo' },
-        { id: 'i53', cat_id: 'c25', dept_id: 'd7', question: 'Como constata-se a qualidade: Lotes vêm sem avarias explícitas da transportadora?', eh_critico: true, status: 'Ativo' },
-        { id: 'i54', cat_id: 'c26', dept_id: 'd7', question: 'Avalie a presteza de varrer/lavar a plataforma assim que o caminhão termina de recuar.', eh_critico: false, status: 'Ativo' },
-        { id: 'i55', cat_id: 'c26', dept_id: 'd7', question: 'Avalie a condução da fila e do estacionamento da recepção de forma que o pátio fique ágil.', eh_critico: false, status: 'Ativo' },
-        { id: 'i56', cat_id: 'c27', dept_id: 'd7', question: 'Avalie se Produtos "de Câmara" (frios/carnes) são alocados lá dentro instantaneamente.', eh_critico: true, status: 'Ativo' },
-
-        // Avarias (d8)
-        { id: 'i57', cat_id: 'c28', dept_id: 'd8', question: 'Avalie se a área de produtos avariados não entra em contato com produtos de consumo diários.', eh_critico: false, status: 'Ativo' },
-        { id: 'i58', cat_id: 'c28', dept_id: 'd8', question: 'Como está o controle cruzado químico (produtos higiênicos rompidos) e alimentícios vencidos? Isolados?', eh_critico: true, status: 'Ativo' },
-        { id: 'i59', cat_id: 'c29', dept_id: 'd8', question: 'Avalie se as quebras de seção/gôndola estão sendo reportadas e "baixadas" do sistema fiscal diariamente.', eh_critico: true, status: 'Ativo' },
-        { id: 'i60', cat_id: 'c30', dept_id: 'd8', question: 'Avalie se latas que vazaram estão com isolamento lacrado que iniba mau cheiro no estoque.', eh_critico: false, status: 'Ativo' },
-        { id: 'i61', cat_id: 'c30', dept_id: 'd8', question: 'Como atesta-se a descaracterização (massas que não prestam) para evitar catação de lixo orgânico impróprio?', eh_critico: false, status: 'Ativo' }
-    ];
-
-    const defaultStores = [
-        { id: 's1', code: '001', name: 'Super Matriz Centro', city: 'São Paulo' },
-        { id: 's2', code: '002', name: 'Filial Zona Sul', city: 'São Paulo' },
-        { id: 's3', code: '003', name: 'Express Aeroporto', city: 'Guarulhos' }
-    ];
-
     let db = {
         users: [],
         stores: defaultStores,
@@ -428,12 +288,11 @@
             ruanUser.companyId = db.companies[0].id;
         }
         saveDB();
-    loadDB();
+    };
 
     const updateAuthUI = () => {
         if (currentUser) {
             if (currentUser.status === 'pendente') {
-                // Bloqueio temporario na propria auth view
                 authView.classList.remove('hidden');
                 appView.classList.add('hidden');
                 loginForm.classList.add('hidden');
@@ -443,11 +302,9 @@
                 errorMsg.innerText = '';
                 pendingMsg.classList.remove('hidden');
             } else {
-                                // Login completo
                 authView.classList.add('hidden');
                 appView.classList.remove('hidden');
 
-                // Custom Company Identity
                 if (currentUser.companyId && db.companies) {
                     const comp = db.companies.find(c => c.id === currentUser.companyId);
                     if (comp) {
@@ -467,29 +324,19 @@
                         }
                     }
                 }
-
-                // Set UI
+                
                 sidebarUserName.innerText = currentUser.name.split(' ')[0];
                 sidebarUserRole.innerText = currentUser.role === 'admin' ? 'Administrador' : (currentUser.role === 'manager' ? 'Gerente' : 'Auditor');
                 sidebarAvatar.innerText = currentUser.name.charAt(0).toUpperCase();
 
-                // Roles restrictions
                 if (currentUser.role === 'admin') {
                     document.getElementById('nav-admin').classList.remove('hidden');
                 } else {
                     document.getElementById('nav-admin').classList.add('hidden');
                 }
 
-                // Carrega dados pro dashboard e historico
                 populateStores();
                 renderAuditHistory();
-                if(typeof renderScheduledAudits === 'function') renderScheduledAudits();
-                renderAdminUsers();
-
-                switchSection('audit-flow'); // Start with new audit
-            }
-        } else {
-            authView.classList.remove('hidden');
             appView.classList.add('hidden');
         }
     };
