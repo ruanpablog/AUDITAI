@@ -2944,3 +2944,4 @@ function renderScheduledAudits() {
     });
     resetInactivityTimer();
 });
+});
