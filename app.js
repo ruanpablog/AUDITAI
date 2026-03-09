@@ -115,8 +115,6 @@
         { id: 's3', code: '003', name: 'Express Aeroporto', city: 'Guarulhos' }
     ];
 
-    let activeCategoryId = null;
-
     // --- DOM Elements ---
     const authView = document.getElementById('auth-view');
     const appView = document.getElementById('app-view');
