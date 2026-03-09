@@ -1,3 +1,55 @@
+// ==========================================
+// APP INITIALIZATION & UTILS
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- Funções de Ofuscação e Integridade ---
+    const _secretKey = "AUDITAI_SECURE_KEY_2026";
+    
+    const _obfuscate = (str) => {
+        if (!str) return "";
+        let result = "";
+        for (let i = 0; i < str.length; i++) {
+            result += String.fromCharCode(str.charCodeAt(i) ^ _secretKey.charCodeAt(i % _secretKey.length));
+        }
+        return btoa(unescape(encodeURIComponent(result)));
+    };
+
+    const _deobfuscate = (str) => {
+        if (!str) return "";
+        try {
+            let decoded = decodeURIComponent(escape(atob(str)));
+            let result = "";
+            for (let i = 0; i < decoded.length; i++) {
+                result += String.fromCharCode(decoded.charCodeAt(i) ^ _secretKey.charCodeAt(i % _secretKey.length));
+            }
+            return result;
+        } catch (e) {
+            return null;
+        }
+    };
+
+    const _genChecksum = (str) => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return hash.toString(36);
+    };
+
+    const saveDB = () => {
+        const jsonStr = JSON.stringify(db);
+        const checksum = _genChecksum(jsonStr);
+        const obfuscated = _obfuscate(jsonStr);
+        localStorage.setItem('auditai_db', JSON.stringify({
+            data: obfuscated,
+            sig: checksum,
+            ts: Date.now()
+        }));
+    };
+
     // --- State Management (LocalStorage DB) ---
     const defaultDepartments = [
         { id: 'd1', name: 'Açougue', weight: 1, color: '#ef4444' },
