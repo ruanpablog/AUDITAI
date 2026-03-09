@@ -343,42 +343,21 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateAuthUI = () => {
+        if (!currentUser && db.users) {
+            const sessionEmail = sessionStorage.getItem('auditai_session');
+            if (sessionEmail) currentUser = db.users.find(u => u.email === sessionEmail);
+        }
+
         if (currentUser) {
             if (currentUser.status === 'pendente') {
                 authView.classList.remove('hidden');
                 appView.classList.add('hidden');
-                loginForm.classList.add('hidden');
-                regForm.classList.add('hidden');
-                tabLogin.classList.add('hidden');
-                tabRegister.classList.add('hidden');
-                errorMsg.innerText = '';
                 pendingMsg.classList.remove('hidden');
             } else {
                 authView.classList.add('hidden');
                 appView.classList.remove('hidden');
-
-                if (currentUser.companyId && db.companies) {
-                    const comp = db.companies.find(c => c.id === currentUser.companyId);
-                    if (comp) {
-                        if (comp.colors) {
-                            document.documentElement.style.setProperty('--primary', comp.colors.primary);
-                            document.documentElement.style.setProperty('--primary-hover', comp.colors.primary);
-                            document.documentElement.style.setProperty('--secondary', comp.colors.secondary);
-                            document.documentElement.style.setProperty('--accent', comp.colors.accent);
-                        }
-                        if (comp.logo) {
-                            const brandSpan = document.querySelector('.sidebar-brand span');
-                            const brandIcon = document.querySelector('.sidebar-brand i');
-                            if (brandSpan && brandIcon) {
-                                brandIcon.style.display = 'none';
-                                brandSpan.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; width: 100%;"><img src="${comp.logo}" alt="Logo" style="max-height: 52px; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); border-radius: 4px; object-fit: contain;"></div>`;
-                            }
-                        }
-                    }
-                }
-                
                 sidebarUserName.innerText = currentUser.name.split(' ')[0];
-                sidebarUserRole.innerText = currentUser.role === 'admin' ? 'Administrador' : (currentUser.role === 'manager' ? 'Gerente' : 'Auditor');
+                sidebarUserRole.innerText = currentUser.role === 'admin' ? 'Administrador' : 'Usuário';
                 sidebarAvatar.innerText = currentUser.name.charAt(0).toUpperCase();
 
                 if (currentUser.role === 'admin') {
@@ -485,7 +464,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             sessionStorage.setItem('auditai_session', user.email);
             currentUser = user;
-            updateAuthUI();
+            loadDB();
+    if(typeof loadDB === "function") loadDB(); updateAuthUI();
         } else {
             errorMsg.innerText = "Credenciais incorretas!";
         }
@@ -542,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLogout.addEventListener('click', () => {
         sessionStorage.removeItem('auditai_token');
         currentUser = null;
-        updateAuthUI();
+        if(typeof loadDB === "function") loadDB(); updateAuthUI();
     });
 
     // ==========================================
@@ -581,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Check auth on load
-    updateAuthUI();
+    if(typeof loadDB === "function") loadDB(); updateAuthUI();
 // DOMContentLoaded now encompasses the entire file
 
     // ==========================================
@@ -2883,13 +2863,9 @@ function renderScheduledAudits() {
         }
     });
 
-    // 3. Sistema Anti-Debugger (Leve)
-    setTimeout(function check() {
-        const s = Date.now(); debugger;
-        if (Date.now() - s > 100) console.clear();
-        setTimeout(check, 5000);
-    }, 5000);
-
+    // 3. Sistema Anti-Debugger (Desativado para Estabilidade)
+    // Monitoramento básico removido para evitar congelamento.
+    
     // 4. Timer de Inatividade para Auto-Logout (30 minutos)
     let inactivityTimer;
     const resetInactivityTimer = () => {
