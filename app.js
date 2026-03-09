@@ -217,34 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!db.audits) db.audits = [];
             if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' };
 
-            // Injeção de Segurança do Usuário ruangomes221102@gmail.com
-            const recoveryEmail = 'ruangomes221102@gmail.com';
-            let ruanUser = db.users.find(u => u.email === recoveryEmail);
-            if (!ruanUser) {
-                ruanUser = {
-                    id: 'rec_ruan',
-                    name: 'Ruan Gomes',
-                    email: recoveryEmail,
-                    pass: '123456',
-                    role: 'admin',
-                    status: 'aprovado'
-                };
-                db.users.push(ruanUser);
-            } else {
-                // Se ele já existia, forçar a senha, aprovação e perfil de administrador
-                ruanUser.pass = '123456';
-                ruanUser.role = 'admin';
-                ruanUser.status = 'aprovado';
-                ruanUser.name = 'Ruan Gomes';
-            }
-            
-            // Vincular à primeira empresa disponível (se houver) para evitar a mensagem 'Nenhuma empresa vinculada'
-            if (db.companies.length > 0 && !ruanUser.companyId) {
-                ruanUser.companyId = db.companies[0].id;
-            }
-            saveDB();
-            
-            // Force update checklist if they are old or lack dept_id
+                        // Force update checklist if they are old or lack dept_id
             const needsUpdate = !db.checklistItems || db.checklistItems.length < 50 || db.checklistItems.some(i => !i.dept_id);
             if (needsUpdate) {
                 db.categories = defaultCategories;
@@ -286,9 +259,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 role: 'admin',
                 status: 'aprovado'
             };
+            
             db.users.push(adminUser);
             saveDB();
         }
+
+        // --- INJEÇÃO GLOBAL DO USUÁRIO RUAN ---
+        const recoveryEmail = 'ruangomes221102@gmail.com';
+        let ruanUser = db.users.find(u => u.email === recoveryEmail);
+        if (!ruanUser) {
+            ruanUser = {
+                id: 'rec_ruan',
+                name: 'Ruan Gomes',
+                email: recoveryEmail,
+                pass: '123456',
+                role: 'admin',
+                status: 'aprovado'
+            };
+            db.users.push(ruanUser);
+        } else {
+            // Se ele já existia, forçar a senha, aprovação e perfil de administrador
+            ruanUser.pass = '123456';
+            ruanUser.role = 'admin';
+            ruanUser.status = 'aprovado';
+            ruanUser.name = 'Ruan Gomes';
+        }
+        
+        // Vincular à primeira empresa disponível
+        if (db.companies && db.companies.length > 0 && (!ruanUser.companyId || ruanUser.companyId === '')) {
+            ruanUser.companyId = db.companies[0].id;
+        }
+        saveDB();
+
 
         const loggedIn = sessionStorage.getItem('auditai_session');
         if (loggedIn) {
@@ -455,8 +457,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Login
     loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const email = document.getElementById('login-email').value;
-        const pass = document.getElementById('login-pass').value;
+        const email = document.getElementById('login-email').value.trim();
+        const pass = document.getElementById('login-pass').value.trim();
 
         const user = db.users.find(u => u.email === email && u.pass === pass);
         if (user) {
