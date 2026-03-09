@@ -2866,4 +2866,61 @@ function renderScheduledAudits() {
         });
     }
 
+
+    // --- Blindagem de Segurança v17 ---
+    
+    // 1. Bloqueio de Clique Direito
+    document.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        // alert('Segurança: O menu de contexto está desativado para proteção do sistema.');
+    });
+
+    // 2. Bloqueio de Teclas de Atalho (F12, Ctrl+U, Ctrl+Shift+I/J)
+    document.addEventListener('keydown', (e) => {
+        // F12
+        if (e.keyCode === 123) {
+            e.preventDefault();
+            return false;
+        }
+        // Ctrl + Shift + I or Ctrl + Shift + J or Ctrl + U
+        if (e.ctrlKey && (e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || (e.ctrlKey && e.keyCode === 85)) {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // 3. Sistema Anti-Debugger e Limpeza de Console
+    setInterval(() => {
+        const devtools = /./;
+        devtools.toString = function() {
+            this.opened = true;
+        };
+        console.log('%c', devtools);
+        if (devtools.opened) {
+            // Se o console for aberto, limpa tudo ou desloga por segurança
+            console.clear();
+            console.log('%cACESSO RESTRITO', 'color: red; font-size: 40px; font-weight: bold;');
+            console.log('%cAções não autorizadas estão sendo monitoradas.', 'color: white; font-size: 18px;');
+        }
+    }, 2000);
+
+    // 4. Timer de Inatividade para Auto-Logout (30 minutos)
+    let inactivityTimer;
+    const resetInactivityTimer = () => {
+        clearTimeout(inactivityTimer);
+        // Só ativa o timer se houver usuário logado
+        if (sessionStorage.getItem('auditai_session')) {
+            inactivityTimer = setTimeout(() => {
+                alert('Sessão encerrada por inatividade (30 minutos). Por favor, realize o login novamente.');
+                logout();
+            }, 30 * 60 * 1000); // 30 minutos em milissegundos
+        }
+    };
+
+    // Monitorar eventos de interação
+    ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(name => {
+        document.addEventListener(name, resetInactivityTimer, true);
+    });
+    resetInactivityTimer();
+
 });
