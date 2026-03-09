@@ -2797,4 +2797,73 @@ function renderScheduledAudits() {
     });
 }
 
+
+    // --- Backup & Migração de Dados ---
+    const btnExportDb = document.getElementById('btn-export-db');
+    const btnImportDb = document.getElementById('btn-import-db');
+    const dbFileInput = document.getElementById('db-file-input');
+
+    if (btnExportDb) {
+        btnExportDb.addEventListener('click', () => {
+            const dataStr = localStorage.getItem('auditai_db');
+            if (!dataStr) {
+                alert('Nenhum dado encontrado para exportar!');
+                return;
+            }
+            
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `auditai_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert('Backup exportado com sucesso! Guarde este arquivo.');
+        });
+    }
+
+    if (btnImportDb && dbFileInput) {
+        btnImportDb.addEventListener('click', () => {
+            dbFileInput.click();
+        });
+
+        dbFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const confirmMsg = "ATENÇÃO: Importar um backup irá SOBRESCREVER todos os dados atuais do sistema!\n\nTem certeza que deseja continuar?";
+            if (!confirm(confirmMsg)) {
+                dbFileInput.value = ''; // reset
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const jsonStr = e.target.result;
+                    // Validate JSON
+                    const parsedData = JSON.parse(jsonStr);
+                    
+                    // Simple logic validation to ensure it's AuditAí DB
+                    if (parsedData && Array.isArray(parsedData.users) && Array.isArray(parsedData.audits)) {
+                        localStorage.setItem('auditai_db', jsonStr);
+                        alert('Banco de Dados importado com sucesso! O sistema ser reiniciado.');
+                        window.location.reload();
+                    } else {
+                        alert('Arquivo inválido! O JSON não parece ser um backup do Auditaí.');
+                    }
+                } catch (err) {
+                    alert('Erro ao ler o arquivo JSON. Certifique-se de que ele nao est corrompido.');
+                    console.error('Import Error:', err);
+                }
+                dbFileInput.value = '';
+            };
+            reader.readAsText(file);
+        });
+    }
+
 });
