@@ -2943,3 +2943,4 @@ function renderScheduledAudits() {
         document.addEventListener(name, resetInactivityTimer, true);
     });
     resetInactivityTimer();
+});
