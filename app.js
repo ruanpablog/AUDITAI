@@ -356,9 +356,21 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 authView.classList.add('hidden');
                 appView.classList.remove('hidden');
-                sidebarUserName.innerText = currentUser.name.split(' ')[0];
+                
+                // Tema da Empresa
+                if (currentUser.companyId && db.companies) {
+                    const comp = db.companies.find(c => c.id === currentUser.companyId);
+                    if (comp && comp.colors) {
+                        document.documentElement.style.setProperty('--primary', comp.colors.primary);
+                        document.documentElement.style.setProperty('--primary-hover', comp.colors.primary);
+                        document.documentElement.style.setProperty('--secondary', comp.colors.secondary);
+                        document.documentElement.style.setProperty('--accent', comp.colors.accent);
+                    }
+                }
+                
+                sidebarUserName.innerText = (currentUser.name || "Usuário").split(' ')[0];
                 sidebarUserRole.innerText = currentUser.role === 'admin' ? 'Administrador' : 'Usuário';
-                sidebarAvatar.innerText = currentUser.name.charAt(0).toUpperCase();
+                sidebarAvatar.innerText = (currentUser.name || "U").charAt(0).toUpperCase();
 
                 if (currentUser.role === 'admin') {
                     document.getElementById('nav-admin').classList.remove('hidden');
@@ -368,6 +380,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 populateStores();
                 renderAuditHistory();
+            }
+        } else {
+            authView.classList.remove('hidden');
             appView.classList.add('hidden');
         }
     };
@@ -464,8 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             sessionStorage.setItem('auditai_session', user.email);
             currentUser = user;
-            loadDB();
-    if(typeof loadDB === "function") loadDB(); updateAuthUI();
+            updateAuthUI();
         } else {
             errorMsg.innerText = "Credenciais incorretas!";
         }
@@ -522,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLogout.addEventListener('click', () => {
         sessionStorage.removeItem('auditai_token');
         currentUser = null;
-        if(typeof loadDB === "function") loadDB(); updateAuthUI();
+        updateAuthUI();
     });
 
     // ==========================================
@@ -561,7 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Check auth on load
-    if(typeof loadDB === "function") loadDB(); updateAuthUI();
+    updateAuthUI();
 // DOMContentLoaded now encompasses the entire file
 
     // ==========================================
@@ -2884,5 +2898,4 @@ function renderScheduledAudits() {
         document.addEventListener(name, resetInactivityTimer, true);
     });
     resetInactivityTimer()
-}
 });
