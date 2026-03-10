@@ -558,9 +558,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Logout
     btnLogout.addEventListener('click', () => {
-        sessionStorage.removeItem('auditai_token');
+        sessionStorage.removeItem('auditai_session');
         currentUser = null;
         updateAuthUI();
+        
+        // Reset auth screen view to Login specifically
+        if (typeof showAuthScreen === 'function') showAuthScreen('login-form');
+        if (typeof tabLogin !== 'undefined' && typeof tabRegister !== 'undefined') {
+            tabLogin.classList.add('active');
+            tabRegister.classList.remove('active');
+        }
+        if (typeof authTabsContainer !== 'undefined' && authTabsContainer) {
+            authTabsContainer.style.display = '';
+        }
     });
 
     // ==========================================
