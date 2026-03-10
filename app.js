@@ -1120,15 +1120,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileInput.addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if(!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        const base64 = ev.target.result;
-                        itemEl.dataset.photoBase64 = base64;
-                        previewContainer.innerHTML = `<img src="${base64}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
-                        previewContainer.style.display = 'block';
-                        btnAddPhoto.innerHTML = '<i class="ph ph-camera-rotate"></i> Trocar Foto';
-                    };
-                    reader.readAsDataURL(file);
+                    
+                    if (db.config && db.config.imgbb_api_key) {
+                        btnAddPhoto.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Enviando...';
+                        btnAddPhoto.disabled = true;
+                        
+                        const formData = new FormData();
+                        formData.append("image", file);
+                        
+                        fetch(`https://api.imgbb.com/1/upload?key=${db.config.imgbb_api_key}`, {
+                            method: "POST",
+                            body: formData
+                        })
+                        .then(res => res.json())
+                        .then(result => {
+                            if(result.success) {
+                                const url = result.data.url;
+                                itemEl.dataset.photoBase64 = url;
+                                previewContainer.innerHTML = `<img src="${url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
+                                previewContainer.style.display = 'block';
+                                btnAddPhoto.innerHTML = '<i class="ph ph-camera-rotate"></i> Trocar Foto';
+                            } else {
+                                alert("Erro ImgBB: " + (result.error ? result.error.message : "Desconhecido"));
+                                btnAddPhoto.innerHTML = '<i class="ph ph-camera-plus"></i> Adicionar Foto';
+                            }
+                        })
+                        .catch(err => {
+                            alert("Falha de rede ao contatar a nuvem.");
+                            btnAddPhoto.innerHTML = '<i class="ph ph-camera-plus"></i> Adicionar Foto';
+                            console.error(err);
+                        })
+                        .finally(() => {
+                            btnAddPhoto.disabled = false;
+                        });
+                    } else {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                            const base64 = ev.target.result;
+                            itemEl.dataset.photoBase64 = base64;
+                            previewContainer.innerHTML = `<img src="${base64}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
+                            previewContainer.style.display = 'block';
+                            btnAddPhoto.innerHTML = '<i class="ph ph-camera-rotate"></i> Trocar Foto';
+                        };
+                        reader.readAsDataURL(file);
+                    }
                 });
             }
 
@@ -2581,6 +2616,7 @@ function renderAdminSettings() {
     const svc = document.getElementById('cfg-email-service');
     const tmp = document.getElementById('cfg-email-template');
     const pub = document.getElementById('cfg-email-public-key');
+    const imgbb = document.getElementById('cfg-imgbb-key');
     
     if (svc) svc.value = db.config.emailjs_service || '';
     if (tmp) tmp.value = db.config.emailjs_template || '';
@@ -2593,6 +2629,8 @@ if (emailConfigForm) {
         db.config.emailjs_service = document.getElementById('cfg-email-service').value.trim();
         db.config.emailjs_template = document.getElementById('cfg-email-template').value.trim();
         db.config.emailjs_public_key = document.getElementById('cfg-email-public-key').value.trim();
+        const imgbbEl = document.getElementById('cfg-imgbb-key');
+        if (imgbbEl) db.config.imgbb_api_key = imgbbEl.value.trim();
         saveDB();
         alert('Configurações salvas com sucesso!');
     });
