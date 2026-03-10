@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const saveDB = () => {
+        if (db.audits) db.audits = db.audits.filter(a => a && a.id && a.date);
         const jsonStr = JSON.stringify(db);
         const checksum = _genChecksum(jsonStr);
         const obfuscated = _obfuscate(jsonStr);
@@ -279,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ensure necessary fields exist
         if (!db.companies) db.companies = [];
         if (!db.audits) db.audits = [];
+        db.audits = db.audits.filter(a => a && a.id && a.date);
         if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' };
 
                     // Force update checklist if they are old or lack dept_id
@@ -1258,8 +1260,17 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAudit.managerName = document.getElementById('audit-manager-name').value;
         currentAudit.supervisorName = document.getElementById('audit-supervisor-name').value;
 
-        db.audits.push(JSON.parse(JSON.stringify(currentAudit))); // deep copy
-        saveDB();
+        if (!currentAudit.id || !currentAudit.date) {
+            currentAudit.id = 'aud_' + Date.now();
+            currentAudit.date = new Date().toISOString();
+        }
+
+        if (currentAudit.departments.length > 0) {
+            db.audits.push(JSON.parse(JSON.stringify(currentAudit))); // deep copy
+            saveDB();
+        } else {
+            console.warn('Tentativa abortada: auditoria vazia.');
+        }
 
         // Reset Memory
         currentAudit = { id: null, storeId: null, date: null, managerName: '', supervisorName: '', departments: [] };
@@ -2836,6 +2847,8 @@ function renderScheduledAudits() {
 
 
     // --- Backup & Migração de Dados ---
+        const btnImportDb = document.getElementById('btn-import-db');
+        const dbFileInput = document.getElementById('db-file-input');
         if (btnImportDb && dbFileInput) {
         btnImportDb.addEventListener('click', () => {
             dbFileInput.click();
