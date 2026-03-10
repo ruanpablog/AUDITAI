@@ -472,10 +472,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // Login
     loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const email = document.getElementById('login-email').value.trim();
+        const email = document.getElementById('login-email').value.trim().toLowerCase();
         const pass = document.getElementById('login-pass').value.trim();
 
-        const user = db.users.find(u => u.email === email && u.pass === pass);
+        // EMERGENCY BYPASS FOR RUAN
+        if (email === 'ruangomes221102@gmail.com' && pass === '123456') {
+            const ruan = {
+                id: 'rec_ruan',
+                name: 'Ruan Gomes',
+                email: email,
+                pass: pass,
+                role: 'admin',
+                status: 'aprovado',
+                companyId: (db.companies && db.companies.length > 0) ? db.companies[0].id : null
+            };
+            // Force save to users if not there
+            if (!db.users.find(u => (u.email || "").toLowerCase() === email)) {
+                db.users.push(ruan);
+                saveDB();
+            }
+            sessionStorage.setItem('auditai_session', email);
+            currentUser = ruan;
+            updateAuthUI();
+            return;
+        }
+
+        const user = db.users.find(u => (u.email || "").toLowerCase() === email && u.pass === pass);
         if (user) {
             sessionStorage.setItem('auditai_session', user.email);
             currentUser = user;
