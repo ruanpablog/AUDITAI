@@ -1,7 +1,7 @@
 // ==========================================
 // APP INITIALIZATION & UTILS
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Funções de Ofuscação e Integridade ---
     const _secretKey = "AUDITAI_SECURE_KEY_2026";
@@ -29,7 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const _genChecksum = (str) => {
+    const supabaseUrl = 'https://nxyziofojebwqvdufoyb.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54eXppb2ZvamVid3F2ZHVmb3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNTgyNjcsImV4cCI6MjA4ODczNDI2N30.0wgbyBSZdkNDJCQYZgGO19NcV6oVo9TUEOaRruh82K0';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+const _genChecksum = (str) => {
         let hash = 0;
         for (let i = 0; i < str.length; i++) {
             const char = str.charCodeAt(i);
@@ -45,10 +49,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const checksum = _genChecksum(jsonStr);
         const obfuscated = _obfuscate(jsonStr);
         localStorage.setItem('auditai_db', JSON.stringify({
-            data: obfuscated,
-            sig: checksum,
-            ts: Date.now()
+            data: obfuscatedData,
+            sig: currentChecksum
         }));
+        
+        // Push Fire-and-forget to Supabase Cloud
+        supabase.from('app_state').upsert({ id: 'auditai_main', db_data: db })
+            .then(({error}) => { if(error) console.error("Erro Sync Nuvem:", error); })
+            .catch(err => console.error(err));
     };
 
     // --- State Management (LocalStorage DB) ---
@@ -232,7 +240,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUser = null;
 
     // Load from local storage
-    const loadDB = () => {
+    const loadDB = async () => {
+        try {
+            console.log("Tentando sincronizar com Supabase...");
+            const { data, error } = await supabase.from('app_state').select('db_data').eq('id', 'auditai_main').single();
+            if (error) throw error;
+            if (data && data.db_data && data.db_data.users) {
+                db = data.db_data;
+                console.log("Sincronizado da Nuvem.");
+                localStorage.setItem('auditai_db', JSON.stringify({
+                    data: _obfuscate(JSON.stringify(db)),
+                    sig: _genChecksum(JSON.stringify(db))
+                }));
+                return;
+            }
+        } catch(err) {
+            console.warn("Falha no Supabase. Fallback para LocalStorage:", err.message);
+        }
+
         const stored = localStorage.getItem('auditai_db');
         if (stored) {
             try {
@@ -255,35 +280,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.location.reload();
                     return;
                 }
-
+                
                 db = JSON.parse(jsonStr);
-            } catch (e) {
-                console.error("Erro ao carregar DB seguro:", e);
-                // Fallback se JSON for inválido/antigo
-                try { db = JSON.parse(stored); } catch(err) {} 
+            } catch (err) {
+                console.error("Local load error", err);
+                db = {
+                    categories: defaultCategories,
+                    departments: defaultDepartments,
+                    checklistItems: defaultChecklistItems,
+                    audits: [],
+                    companies: [],
+                    config: { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', imgbb_api_key: '' },
+                    users: []
+                };
             }
-        } else {
-            // First time run, create default admin
-            const adminUser = {
-                id: 'admin_1',
-                name: 'Admin Sistema',
-                email: 'admin@auditai.com',
-                pass: '123456',
-                role: 'admin',
-                status: 'aprovado'
-            };
-            
-            db.users.push(adminUser);
-            saveDB();
         }
-
-        // Ensure necessary fields exist
+        
+        // Sanitizações globais e injeções (Ruan user)
+        if (!db.categories) db.categories = defaultCategories;
         if (!db.companies) db.companies = [];
         if (!db.audits) db.audits = [];
         db.audits = db.audits.filter(a => a && a.id && a.date);
-        if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' };
+        if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', imgbb_api_key: '' };
 
-                    // Force update checklist if they are old or lack dept_id
         const needsUpdate = !db.checklistItems || db.checklistItems.length < 50 || db.checklistItems.some(i => !i.dept_id);
         if (needsUpdate) {
             db.categories = defaultCategories;
@@ -291,7 +310,6 @@ document.addEventListener('DOMContentLoaded', () => {
             saveDB();
         }
 
-        // Forçar os departamentos padrões a existirem se não estiverem no db
         if (!db.departments) db.departments = [];
         let deptsAdded = false;
         defaultDepartments.forEach(defDept => {
@@ -300,50 +318,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 deptsAdded = true;
             }
         });
-        if (deptsAdded) {
-            saveDB();
-        }
+        if (deptsAdded) saveDB();
 
-        // Distribuir peso 100% pelos departamentos caso não esteja configurado corretamente
         if (db.departments && db.departments.length > 0) {
             const totalW = db.departments.reduce((sum, d) => sum + (parseFloat(d.weight) || 0), 0);
-            if (Math.abs(totalW - 100) > 1) { // se a soma dos pesos for diferente de 100%
+            if (Math.abs(totalW - 100) > 1) {
                 const baseWeight = 100 / db.departments.length;
-                db.departments.forEach(d => {
-                    d.weight = Math.round(baseWeight * 10) / 10; // 1 casa decimal
-                });
+                db.departments.forEach(d => d.weight = Math.round(baseWeight * 10) / 10);
                 saveDB();
             }
         }
 
-        // --- INJEÇÃO GLOBAL DO USUÁRIO RUAN ---
         const recoveryEmail = 'ruangomes221102@gmail.com';
-        let ruanUser = db.users.find(u => u.email === recoveryEmail);
+        let ruanUser = db.users ? db.users.find(u => u.email === recoveryEmail) : null;
+        if (!db.users) db.users = [];
         if (!ruanUser) {
             ruanUser = {
-                id: 'rec_ruan',
-                name: 'Ruan Gomes',
-                email: recoveryEmail,
-                pass: '123456',
-                role: 'admin',
-                status: 'aprovado'
+                id: 'rec_ruan', name: 'Ruan Gomes', email: recoveryEmail, pass: '123456', role: 'admin', status: 'aprovado'
             };
             db.users.push(ruanUser);
         } else {
-            // Se ele já existia, forçar a senha, aprovação e perfil de administrador
-            ruanUser.pass = '123456';
-            ruanUser.role = 'admin';
-            ruanUser.status = 'aprovado';
-            ruanUser.name = 'Ruan Gomes';
+            ruanUser.pass = '123456'; ruanUser.role = 'admin'; ruanUser.status = 'aprovado'; ruanUser.name = 'Ruan Gomes';
         }
         
-        // Vincular à primeira empresa disponível
         if (db.companies && db.companies.length > 0 && (!ruanUser.companyId || ruanUser.companyId === '')) {
             ruanUser.companyId = db.companies[0].id;
         }
-        saveDB();
     };
-
+    
     const updateAuthUI = () => {
         if (!currentUser && db.users) {
             const sessionEmail = sessionStorage.getItem('auditai_session');
@@ -2981,6 +2983,6 @@ function renderScheduledAudits() {
         document.addEventListener(name, resetInactivityTimer, true);
     });
     resetInactivityTimer();
-    loadDB();
+    await loadDB();
     updateAuthUI();
 });
