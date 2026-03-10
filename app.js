@@ -2897,5 +2897,7 @@ function renderScheduledAudits() {
     ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(name => {
         document.addEventListener(name, resetInactivityTimer, true);
     });
-    resetInactivityTimer()
+    resetInactivityTimer();
+    loadDB();
+    updateAuthUI();
 });
