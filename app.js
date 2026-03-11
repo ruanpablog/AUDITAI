@@ -1502,7 +1502,7 @@ const _genChecksum = (str) => {
 
                     let photoHtml = '';
                     if (r.photos && r.photos.length > 0) {
-                        photoHtml = `<div style="margin-top: 16px; width: 100%; text-align: center;"><img src="${r.photos[0]}" style="max-width: 100%; max-height: 400px; object-fit: contain; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.05);"></div>`;
+                        photoHtml = `<div style="margin-top: 16px; width: 100%; text-align: center;"><img src="${r.photos[0]}" style="max-width: 100%; max-height: 250px; page-break-inside: avoid;; object-fit: contain; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.05);"></div>`;
                     }
 
                     deptDetailHtml += `
@@ -1597,7 +1597,7 @@ const _genChecksum = (str) => {
                             <p style="font-size: 0.75rem; color: #475569; font-weight: 600; text-transform: uppercase; margin-bottom: 10px;">Antes (Audit. Anterior)</p>
                             <div style="display:flex; align-items:center; gap:8px;">
                                 <span class="badge ${parentResp.value === 'ruim' || parentResp.value === 'insuficiente' ? 'badge-danger' : 'badge-warning'}">${parentResp.value.toUpperCase()}</span>
-                                ${parentResp.photos && parentResp.photos[0] ? `<div style="margin-top: 12px; text-align: center;"><img src="${parentResp.photos[0]}" style="max-width: 100%; max-height: 250px; border-radius: 6px; object-fit: contain; border: 1px solid #cbd5e1;"></div>` : ''}
+                                ${parentResp.photos && parentResp.photos[0] ? `<div style="margin-top: 12px; text-align: center;"><img src="${parentResp.photos[0]}" style="max-width: 100%; max-height: 250px; page-break-inside: avoid; border-radius: 6px; object-fit: contain; border: 1px solid #cbd5e1;"></div>` : ''}
                             </div>
                             <p style="font-size: 0.85rem; color: #1e293b; margin-top:10px; line-height: 1.4;"><i>"${parentResp.observations || 'Sem obs'}"</i></p>
                         </div>
@@ -1605,7 +1605,7 @@ const _genChecksum = (str) => {
                             <p style="font-size: 0.75rem; color: #475569; font-weight: 600; text-transform: uppercase; margin-bottom: 10px;">Agora (Auditoria de Retorno)</p>
                             <div style="display:flex; align-items:center; gap:8px;">
                                 <span class="badge ${scoreNow >= 80 ? 'badge-success' : (scoreNow >= 60 ? 'badge-warning' : 'badge-danger')}">${resp.value.toUpperCase()}</span>
-                                ${resp.photos && resp.photos[0] ? `<div style="margin-top: 12px; text-align: center;"><img src="${resp.photos[0]}" style="max-width: 100%; max-height: 250px; border-radius: 6px; object-fit: contain; border: 1px solid #cbd5e1;"></div>` : ''}
+                                ${resp.photos && resp.photos[0] ? `<div style="margin-top: 12px; text-align: center;"><img src="${resp.photos[0]}" style="max-width: 100%; max-height: 250px; page-break-inside: avoid; border-radius: 6px; object-fit: contain; border: 1px solid #cbd5e1;"></div>` : ''}
                             </div>
                             <p style="font-size: 0.85rem; color: #1e293b; margin-top:10px; line-height: 1.4;"><i>"${resp.observations || 'Sem obs'}"</i></p>
                         </div>

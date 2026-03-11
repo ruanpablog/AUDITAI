@@ -30,6 +30,19 @@
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="styles.css">
+    <style>
+        @media print {
+            .report-no-break {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                display: block !important;
+            }
+            img {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+        }
+    </style>
 </head>
 
 <body>
