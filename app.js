@@ -290,7 +290,7 @@ const _genChecksum = (str) => {
                     checklistItems: defaultChecklistItems,
                     audits: [],
                     companies: [],
-                    config: { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', imgbb_api_key: '' },
+                    config: { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' },
                     users: []
                 };
             }
@@ -301,7 +301,7 @@ const _genChecksum = (str) => {
         if (!db.companies) db.companies = [];
         if (!db.audits) db.audits = [];
         db.audits = db.audits.filter(a => a && a.id && a.date);
-        if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', imgbb_api_key: '' };
+        if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' };
 
         const needsUpdate = !db.checklistItems || db.checklistItems.length < 50 || db.checklistItems.some(i => !i.dept_id);
         if (needsUpdate) {
@@ -1123,38 +1123,39 @@ const _genChecksum = (str) => {
                     const file = e.target.files[0];
                     if(!file) return;
                     
-                    if (db.config && db.config.imgbb_api_key) {
+                    if (typeof supabase !== 'undefined') {
                         btnAddPhoto.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Enviando...';
                         btnAddPhoto.disabled = true;
+
+                        const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
                         
-                        const formData = new FormData();
-                        formData.append("image", file);
-                        
-                        fetch(`https://api.imgbb.com/1/upload?key=${db.config.imgbb_api_key}`, {
-                            method: "POST",
-                            body: formData
-                        })
-                        .then(res => res.json())
-                        .then(result => {
-                            if(result.success) {
-                                const url = result.data.url;
-                                itemEl.dataset.photoBase64 = url;
-                                previewContainer.innerHTML = `<img src="${url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
-                                previewContainer.style.display = 'block';
-                                btnAddPhoto.innerHTML = '<i class="ph ph-camera-rotate"></i> Trocar Foto';
-                            } else {
-                                alert("Erro ImgBB: " + (result.error ? result.error.message : "Desconhecido"));
+                        supabase.storage.from('audit_photos').upload(fileName, file)
+                            .then(({ data, error }) => {
+                                if (error) {
+                                    console.error('Supabase Storage Error:', error);
+                                    alert('Erro ao enviar foto para nuvem: ' + error.message);
+                                    btnAddPhoto.innerHTML = '<i class="ph ph-camera-plus"></i> Adicionar Foto';
+                                } else {
+                                    const { data: publicUrlData } = supabase.storage.from('audit_photos').getPublicUrl(fileName);
+                                    if (publicUrlData && publicUrlData.publicUrl) {
+                                        const url = publicUrlData.publicUrl;
+                                        itemEl.dataset.photoBase64 = url;
+                                        previewContainer.innerHTML = `<img src="${url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
+                                        previewContainer.style.display = 'block';
+                                        btnAddPhoto.innerHTML = '<i class="ph ph-camera-rotate"></i> Trocar Foto';
+                                        // Auto save the snapshot
+                                        saveDB();
+                                    }
+                                }
+                            })
+                            .catch(err => {
+                                alert("Falha ao comunicar com armazenamento da nuvem.");
                                 btnAddPhoto.innerHTML = '<i class="ph ph-camera-plus"></i> Adicionar Foto';
-                            }
-                        })
-                        .catch(err => {
-                            alert("Falha de rede ao contatar a nuvem.");
-                            btnAddPhoto.innerHTML = '<i class="ph ph-camera-plus"></i> Adicionar Foto';
-                            console.error(err);
-                        })
-                        .finally(() => {
-                            btnAddPhoto.disabled = false;
-                        });
+                                console.error(err);
+                            })
+                            .finally(() => {
+                                btnAddPhoto.disabled = false;
+                            });
                     } else {
                         const reader = new FileReader();
                         reader.onload = (ev) => {
@@ -2631,8 +2632,7 @@ if (emailConfigForm) {
         db.config.emailjs_service = document.getElementById('cfg-email-service').value.trim();
         db.config.emailjs_template = document.getElementById('cfg-email-template').value.trim();
         db.config.emailjs_public_key = document.getElementById('cfg-email-public-key').value.trim();
-        const imgbbEl = document.getElementById('cfg-imgbb-key');
-        if (imgbbEl) db.config.imgbb_api_key = imgbbEl.value.trim();
+        
         saveDB();
         alert('Configurações salvas com sucesso!');
     });
