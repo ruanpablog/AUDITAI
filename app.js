@@ -54,13 +54,20 @@ const _genChecksum = (str) => {
         }));
         
         if (syncCloud) {
-            return supabase.from('app_state').upsert({ id: 'auditai_main', db_data: db })
+            // Se houver empresa, o dado é da empresa. Se não, é do usuário.
+            let cloudId = 'auditai_main';
+            if (currentUser) {
+                if (currentUser.companyId) cloudId = 'auditai_company_' + currentUser.companyId;
+                else cloudId = 'auditai_user_' + currentUser.id;
+            }
+
+            return supabase.from('app_state').upsert({ id: cloudId, db_data: db })
                 .then(({error}) => { 
                     if(error) {
                         console.error("Erro Sync Nuvem:", error);
                         throw error;
                     }
-                    console.log("Sincronizado com Nuvem com sucesso.");
+                    console.log(`Sincronizado com Nuvem (${cloudId}) com sucesso.`);
                 });
         }
     };
@@ -538,7 +545,11 @@ const _genChecksum = (str) => {
         if (user) {
             sessionStorage.setItem('auditai_session', user.email);
             currentUser = user;
-            updateAuthUI();
+            
+            // Tentar carregar dados da nuvem específicos deste usuário/empresa logo após o login
+            loadDB().then(() => {
+                updateAuthUI();
+            });
         } else {
             errorMsg.innerText = "Credenciais incorretas!";
         }
@@ -1348,7 +1359,7 @@ const _genChecksum = (str) => {
 
         if (currentAudit.departments.length > 0) {
             db.audits.push(JSON.parse(JSON.stringify(currentAudit))); // deep copy
-            saveDB();
+            saveDB(true); // SYNC AUTOMÁTICO AO FINALIZAR
         } else {
             console.warn('Tentativa abortada: auditoria vazia.');
         }
