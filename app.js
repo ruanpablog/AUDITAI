@@ -43,6 +43,14 @@ const _genChecksum = (str) => {
         return hash.toString(36);
     };
 
+    const getCloudId = () => {
+        if (currentUser) {
+            if (currentUser.companyId) return 'auditai_company_' + currentUser.companyId;
+            return 'auditai_user_' + currentUser.id;
+        }
+        return 'auditai_main';
+    };
+
     const saveDB = (syncCloud = false) => {
         if (db.audits) db.audits = db.audits.filter(a => a && a.id && a.date);
         const jsonStr = JSON.stringify(db);
@@ -51,16 +59,10 @@ const _genChecksum = (str) => {
         localStorage.setItem('auditai_db', JSON.stringify({
             data: obfuscated,
             sig: checksum
-        }));
+		}));
         
         if (syncCloud) {
-            // Se houver empresa, o dado é da empresa. Se não, é do usuário.
-            let cloudId = 'auditai_main';
-            if (currentUser) {
-                if (currentUser.companyId) cloudId = 'auditai_company_' + currentUser.companyId;
-                else cloudId = 'auditai_user_' + currentUser.id;
-            }
-
+            const cloudId = getCloudId();
             return supabase.from('app_state').upsert({ id: cloudId, db_data: db })
                 .then(({error}) => { 
                     if(error) {
@@ -276,13 +278,17 @@ const _genChecksum = (str) => {
     const loadDB = async () => {
         let cloudData = null;
         try {
-            console.log("Tentando sincronizar com Supabase...");
-            const { data, error } = await supabase.from('app_state').select('db_data').eq('id', 'auditai_main').single();
-            if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "no rows found"
+            const cloudId = getCloudId();
+            console.log(`Tentando sincronizar com Supabase (${cloudId})...`);
+            const { data, error } = await supabase.from('app_state').select('db_data').eq('id', cloudId).single();
             
-            if (data && data.db_data) {
+            if (!error && data && data.db_data) {
                 cloudData = data.db_data;
                 console.log("Dados recuperados da Nuvem.");
+            } else if (cloudId !== 'auditai_main') {
+                // Se não achou dado do usuário, tenta do master
+                const { data: mainData } = await supabase.from('app_state').select('db_data').eq('id', 'auditai_main').single();
+                if (mainData) cloudData = mainData.db_data;
             }
         } catch(err) {
             console.warn("Falha no Supabase. Fallback para LocalStorage:", err.message);
