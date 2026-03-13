@@ -140,7 +140,7 @@ h5 {
     background: transparent;
     border: none;
     color: var(--text-muted);
-    font-size: 1.4rem;
+    font-size: 1.6rem;
     cursor: pointer;
     padding: 6px;
     display: flex;
@@ -815,10 +815,10 @@ label {
     border: 2px solid var(--border);
     border-radius: 10px;
     background: transparent;
-    color: var(--text-muted);
+    color: #cbd5e1;
     font-family: var(--font-body);
-    font-weight: 600;
-    font-size: 0.85rem;
+    font-weight: 700;
+    font-size: 0.9rem;
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -828,7 +828,7 @@ label {
 }
 
 .rating-btn i {
-    font-size: 1.4rem;
+    font-size: 1.6rem;
 }
 
 .rating-btn:hover {
@@ -837,20 +837,34 @@ label {
 
 .rating-btn.ruim.active {
     border-color: var(--danger);
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--danger);
+    background: rgba(239, 68, 68, 0.25);
+    color: #fff;
+}
+
+.rating-btn.insuficiente.active {
+    border-color: #f97316;
+    background: rgba(249, 115, 22, 0.25);
+    color: #fff;
 }
 
 .rating-btn.bom.active {
     border-color: var(--secondary);
-    background: rgba(59, 130, 246, 0.1);
-    color: var(--secondary);
+    background: rgba(59, 130, 246, 0.25);
+    color: #fff;
 }
 
 .rating-btn.excelente.active {
-    border-color: var(--accent);
-    background: rgba(245, 158, 11, 0.1);
-    color: var(--accent);
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.25);
+    color: #fff;
+}
+
+.audit-question {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 12px;
+    line-height: 1.4;
 }
 
 /* =========================================
@@ -1148,7 +1162,7 @@ label {
     }
 
     .kpi-value {
-        font-size: 1.4rem;
+        font-size: 1.6rem;
     }
 }
 
@@ -1200,7 +1214,8 @@ label {
 .select-card p {
     font-size: 0.85rem;
     color: var(--text-muted);
-}@media print {
+}
+@media print {
     @page { size: A4 portrait; margin: 1cm; }
     .page-header { display: none !important; }
     .app-sidebar { display: none !important; }

@@ -1,0 +1,63 @@
+/* High Contrast Overrides for Evaluation Screen */
+
+.audit-question {
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    margin-bottom: 16px !important;
+    line-height: 1.5 !important;
+    display: block !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.rating-btn {
+    color: #e2e8f0 !important;
+    font-weight: 700 !important;
+    border-color: rgba(255,255,255,0.2) !important;
+}
+
+.rating-btn i {
+    font-size: 1.8rem !important;
+}
+
+.rating-btn:hover {
+    background: rgba(255,255,255,0.1) !important;
+    border-color: rgba(255,255,255,0.5) !important;
+}
+
+/* Active States for Visibility */
+.rating-btn.active {
+    color: #fff !important;
+    box-shadow: 0 0 15px rgba(255,255,255,0.1);
+}
+
+.rating-btn.ruim.active {
+    background-color: rgba(239, 68, 68, 0.4) !important;
+    border-color: #ef4444 !important;
+}
+
+.rating-btn.insuficiente.active {
+    background-color: rgba(249, 115, 22, 0.4) !important;
+    border-color: #f97316 !important;
+}
+
+.rating-btn.bom.active {
+    background-color: rgba(59, 130, 246, 0.4) !important;
+    border-color: #3b82f6 !important;
+}
+
+.rating-btn.excelente.active {
+    background-color: rgba(16, 185, 129, 0.4) !important;
+    border-color: #10b981 !important;
+}
+
+/* Label for Respondent Name */
+label[for="dept-responsible-name"], 
+#dept-responsible-name {
+    color: #fff !important;
+    font-weight: 600 !important;
+}
+
+#dept-responsible-name::placeholder {
+    color: rgba(255,255,255,0.5) !important;
+}

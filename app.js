@@ -43,20 +43,46 @@ const _genChecksum = (str) => {
         return hash.toString(36);
     };
 
-    const saveDB = () => {
+    const saveDB = (syncCloud = false) => {
         if (db.audits) db.audits = db.audits.filter(a => a && a.id && a.date);
         const jsonStr = JSON.stringify(db);
         const checksum = _genChecksum(jsonStr);
         const obfuscated = _obfuscate(jsonStr);
         localStorage.setItem('auditai_db', JSON.stringify({
-            data: obfuscatedData,
-            sig: currentChecksum
+            data: obfuscated,
+            sig: checksum
         }));
         
-        // Push Fire-and-forget to Supabase Cloud
-        supabase.from('app_state').upsert({ id: 'auditai_main', db_data: db })
-            .then(({error}) => { if(error) console.error("Erro Sync Nuvem:", error); })
-            .catch(err => console.error(err));
+        if (syncCloud) {
+            return supabase.from('app_state').upsert({ id: 'auditai_main', db_data: db })
+                .then(({error}) => { 
+                    if(error) {
+                        console.error("Erro Sync Nuvem:", error);
+                        throw error;
+                    }
+                    console.log("Sincronizado com Nuvem com sucesso.");
+                });
+        }
+    };
+
+    window.publishToCloud = async () => {
+        const btn = document.getElementById('btn-publish-cloud');
+        const originalHtml = btn.innerHTML;
+        try {
+            if (!confirm("Deseja publicar seus dados atuais na nuvem? Isso tornará suas lojas e checklists visíveis para todos os usuários.")) return;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Publicando...';
+            
+            await saveDB(true);
+            
+            alert("Dados publicados com sucesso! Agora todos os usuários terão acesso a estas informações.");
+        } catch (err) {
+            alert("Erro ao publicar dados: " + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
     };
 
     // --- State Management (LocalStorage DB) ---
@@ -241,59 +267,66 @@ const _genChecksum = (str) => {
 
     // Load from local storage
     const loadDB = async () => {
+        let cloudData = null;
         try {
             console.log("Tentando sincronizar com Supabase...");
             const { data, error } = await supabase.from('app_state').select('db_data').eq('id', 'auditai_main').single();
-            if (error) throw error;
-            if (data && data.db_data && data.db_data.users) {
-                db = data.db_data;
-                console.log("Sincronizado da Nuvem.");
-                localStorage.setItem('auditai_db', JSON.stringify({
-                    data: _obfuscate(JSON.stringify(db)),
-                    sig: _genChecksum(JSON.stringify(db))
-                }));
-                return;
+            if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "no rows found"
+            
+            if (data && data.db_data) {
+                cloudData = data.db_data;
+                console.log("Dados recuperados da Nuvem.");
             }
         } catch(err) {
             console.warn("Falha no Supabase. Fallback para LocalStorage:", err.message);
         }
 
         const stored = localStorage.getItem('auditai_db');
+        let localData = null;
         if (stored) {
             try {
                 let payload = JSON.parse(stored);
-                
-                // Suporte para migração (se for JSON antigo sem sig)
-                if (!payload.sig && payload.users) {
-                    db = payload;
-                    saveDB(); // Converte para o novo formato
-                    return;
+                if (payload.data && payload.sig) {
+                    const jsonStr = _deobfuscate(payload.data);
+                    if (jsonStr) {
+                         const currentChecksum = _genChecksum(jsonStr);
+                         if (currentChecksum === payload.sig) {
+                             localData = JSON.parse(jsonStr);
+                         }
+                    }
+                } else if (payload.users) {
+                    localData = payload; // Old format
                 }
+            } catch (err) { console.error("Local parse error", err); }
+        }
 
-                const jsonStr = _deobfuscate(payload.data);
-                if (!jsonStr) throw new Error("Falha na desofuscação");
-                
-                const currentChecksum = _genChecksum(jsonStr);
-                if (currentChecksum !== payload.sig) {
-                    alert("ALERTA DE SEGURANÇA: A integridade do banco de dados local foi violada ou os dados estão corrompidos. O acesso foi bloqueado para sua proteção.");
-                    localStorage.removeItem('auditai_db');
-                    window.location.reload();
-                    return;
-                }
-                
-                db = JSON.parse(jsonStr);
-            } catch (err) {
-                console.error("Local load error", err);
-                db = {
-                    categories: defaultCategories,
-                    departments: defaultDepartments,
-                    checklistItems: defaultChecklistItems,
-                    audits: [],
-                    companies: [],
-                    config: { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' },
-                    users: []
-                };
-            }
+        // --- GLOBAL SYNC STRATEGY ---
+        // 1. If we have cloud data, it wins (Single Source of Truth)
+        if (cloudData && cloudData.users) {
+            db = cloudData;
+            // Update local copy
+            const jsonStr = JSON.stringify(db);
+            localStorage.setItem('auditai_db', JSON.stringify({
+                data: _obfuscate(jsonStr),
+                sig: _genChecksum(jsonStr)
+            }));
+        } 
+        // 2. Else if we only have local data, use it
+        else if (localData && localData.users) {
+            db = localData;
+        }
+        // 3. Fallback to defaults (New App)
+        else {
+            db = {
+                users: [],
+                stores: defaultStores,
+                departments: defaultDepartments,
+                categories: defaultCategories,
+                checklistItems: defaultChecklistItems,
+                audits: [],
+                companies: [],
+                config: { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' }
+            };
         }
         
         // Sanitizações globais e injeções (Ruan user)
@@ -1086,7 +1119,7 @@ const _genChecksum = (str) => {
 
             html += `
                 <div class="audit-item" data-item="${item.id}" style="margin-bottom: 24px;">
-                    <p style="font-weight: 500; margin-bottom: 8px;">${item.question} ${criticoBadge}</p>
+                    <p class="audit-question">${item.question} ${criticoBadge}</p>
                     ${beforePhotoHtml}
                     <div class="rating-group">
                         <button class="rating-btn ruim" data-val="ruim"><i class="ph ph-x-circle"></i> Ruim</button>
@@ -1324,8 +1357,8 @@ const _genChecksum = (str) => {
         currentAudit = { id: null, storeId: null, date: null, managerName: '', supervisorName: '', departments: [] };
         
         // Show Report
-        const jáustSaved = db.audits[db.audits.length - 1];
-        showReport(jáustSaved);
+        const justSaved = db.audits[db.audits.length - 1];
+        showReport(justSaved);
     }
 
     function updateProgressBar(stepIndex) {
@@ -1354,10 +1387,6 @@ const _genChecksum = (str) => {
         const followUpComparison = document.getElementById('report-followup-comparison');
         if (followUpContainer) followUpContainer.classList.add('hidden');
         if (followUpComparison) followUpComparison.innerHTML = '';
-
-        if (auditObj.type === 'retorno' && auditObj.parentAuditId) {
-            renderReportFollowUpComparison(auditObj);
-        }
 
         if (auditObj.type === 'retorno' && auditObj.parentAuditId) {
             renderReportFollowUpComparison(auditObj);
@@ -1989,11 +2018,25 @@ const _genChecksum = (str) => {
     }
 
     window.deleteAudit = function(id) {
-        if (!confirm('Tem certeza que deseja excluir esta auditoria? Esta ação não pode ser desfeita.')) return;
-        db.audits = db.audits.filter(a => a.id !== id);
-        saveDB();
-        renderAuditHistory();
-        if (typeof renderDashboard === 'function') renderDashboard();
+        try {
+            if (!confirm('Tem certeza que deseja excluir esta auditoria? Esta ação não pode ser desfeita.')) return;
+            
+            const initialCount = db.audits.length;
+            // Robust comparison: cast both to string and trim to avoid type mismatch
+            db.audits = db.audits.filter(a => String(a.id).trim() !== String(id).trim());
+            
+            if (db.audits.length === initialCount) {
+                console.warn("Nenhuma auditoria encontrada para excluir com ID:", id);
+                alert("Aviso: Nenhuma auditoria foi removida. O ID pode não coincidir.");
+            } else {
+                renderAuditHistory(); // Immediate UI feedback
+                saveDB();            // Persist changes
+                if (typeof renderDashboard === 'function') renderDashboard();
+            }
+        } catch (err) {
+            console.error("Erro ao excluir auditoria:", err);
+            alert("Erro ao excluir auditoria. Verifique o console para detalhes.");
+        }
     };
 
     // Attach to history nav
@@ -2652,6 +2695,13 @@ if (nAdmin2) {
     });
 }
 
+const btnPublish = document.getElementById('btn-publish-cloud');
+if (btnPublish) {
+    btnPublish.addEventListener('click', () => {
+        if (typeof window.publishToCloud === 'function') window.publishToCloud();
+    });
+}
+
 
 
 window.editDept = function(id) {
@@ -2877,18 +2927,71 @@ function renderScheduledAudits() {
                 parentAuditId = parentAudit.id;
                 selectedStoreId = parentAudit.storeId;
                 
+                // --- Smart Jump Logic ---
+                // Find all depts and cats with failures (Ruim/Insuficiente)
+                const failingDepts = parentAudit.departments.filter(d => 
+                    d.responses.some(r => r.value === 'ruim' || r.value === 'insuficiente')
+                );
+
+                // Initialize currentAudit
+                currentAudit.storeId = selectedStoreId;
+                currentAudit.id = 'aud_ret_' + Date.now();
+                currentAudit.date = new Date().toISOString();
+                currentAudit.departments = [];
+                currentAudit.type = 'retorno';
+                currentAudit.parentAuditId = parentAuditId;
+                currentAudit.managerName = parentAudit.managerName || '';
+                currentAudit.supervisorName = parentAudit.supervisorName || '';
+                
+                document.getElementById('audit-manager-name').value = currentAudit.managerName;
+                document.getElementById('audit-supervisor-name').value = currentAudit.supervisorName;
+
+                // UI Reset
                 document.querySelectorAll('.content-section').forEach(s => s.classList.add('hidden'));
                 document.getElementById('audit-flow').classList.remove('hidden');
-                
                 document.querySelectorAll('.audit-step').forEach(s => s.classList.add('hidden'));
-                document.getElementById('step-2').classList.remove('hidden');
                 
                 const store = db.stores.find(s => s.id === selectedStoreId);
                 const titleEl = document.getElementById('current-store-title');
                 if (titleEl) titleEl.innerText = store ? store.name + " (RETORNO)" : 'Loja (RETORNO)';
-                
-                if (typeof populateDepartments === 'function') {
-                    populateDepartments();
+
+                if (failingDepts.length === 1) {
+                    const deptId = failingDepts[0].deptId;
+                    activeDeptId = deptId;
+                    const deptObj = db.departments.find(d => d.id === deptId);
+                    if (deptObj) applyTheme(deptObj.color);
+                    
+                    // Count failing categories in this dept
+                    const failingCats = [];
+                    const deptResponses = failingDepts[0].responses;
+                    deptResponses.forEach(r => {
+                        if (r.value === 'ruim' || r.value === 'insuficiente') {
+                            const item = db.checklistItems.find(i => i.id === r.itemId);
+                            if (item && !failingCats.includes(item.cat_id)) failingCats.push(item.cat_id);
+                        }
+                    });
+
+                    if (failingCats.length === 1) {
+                        // JUMP DIRECTLY to Evaluation (Step 3)
+                        activeCategoryId = failingCats[0];
+                        const catObj = db.categories.find(c => c.id === activeCategoryId);
+                        document.getElementById('current-dept-title').innerText = catObj ? catObj.name : 'Avaliação';
+                        
+                        document.getElementById('step-3').classList.remove('hidden');
+                        updateProgressBar(2);
+                        populateCategoriesAndItems(activeCategoryId);
+                    } else {
+                        // JUMP to Category Selection (Step 2.5)
+                        document.getElementById('cat-selection-store-dept').innerText = deptObj ? deptObj.name : 'Departamento';
+                        document.getElementById('step-cat-selection').classList.remove('hidden');
+                        updateProgressBar(1.5);
+                        populateCategoriesSelection(deptId);
+                    }
+                } else {
+                    // Standard Jump to Dept Selection (Step 2)
+                    document.getElementById('step-2').classList.remove('hidden');
+                    updateProgressBar(1);
+                    if (typeof populateDepts === 'function') populateDepts();
                 }
             }
         });
@@ -2915,7 +3018,7 @@ function renderScheduledAudits() {
             }
 
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 try {
                     const jsonStr = e.target.result;
                     // Validate JSON
@@ -2923,8 +3026,9 @@ function renderScheduledAudits() {
                     
                     // Simple logic validation to ensure it's AuditAí DB
                     if (parsedData && Array.isArray(parsedData.users) && Array.isArray(parsedData.audits)) {
-                        localStorage.setItem('auditai_db', jsonStr);
-                        alert('Banco de Dados importado com sucesso! O sistema ser reiniciado.');
+                        db = parsedData;
+                        await saveDB(true); // Persist local and Sync to Cloud
+                        alert('Banco de Dados importado e sincronizado com a nuvem com sucesso! O sistema será reiniciado.');
                         window.location.reload();
                     } else {
                         alert('Arquivo inválido! O JSON não parece ser um backup do Auditaí.');

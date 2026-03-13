@@ -30,6 +30,7 @@
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="high_contrast.css">
     <style>
         @media print {
             .report-no-break {
@@ -969,6 +970,11 @@
                                     <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Restaura os dados de um arquivo exportado anteriormente. <strong style="color:var(--danger)">Subscreve os atuais!</strong></p>
                                     <input type="file" id="db-file-input" accept=".json" style="display: none;">
                                     <button class="btn btn-outline" id="btn-import-db" style="width: 100%;"><i class="ph ph-folder-open"></i> Selecionar Arquivo</button>
+                                </div>
+                                <div style="flex: 1; min-width: 250px; border-left: 1px solid var(--border); padding-left: 16px;">
+                                    <h4 style="margin-bottom: 8px; color: var(--accent);"><i class="ph ph-cloud-arrow-up"></i> Compartilhar com Todos</h4>
+                                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Envia seus dados atuais (Checklists, Lojas, etc) para a nuvem. Todos os usuários verão essas informações.</p>
+                                    <button class="btn btn-primary" id="btn-publish-cloud" style="width: 100%; background: var(--accent); border-color: var(--accent);"><i class="ph ph-rocket-launch"></i> Publicar na Nuvem</button>
                                 </div>
                             </div>
 
