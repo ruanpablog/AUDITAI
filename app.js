@@ -1486,7 +1486,7 @@ const _genChecksum = (str) => {
 
             // Detalhamento por Categoria e Itens
             let deptDetailHtml = `
-            <div class="report-department-block" style="margin-top: 24px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff;">
+            <div class="report-department-block glass" style="margin-top: 24px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
                 <div style="background: var(--primary-dept-bg); padding: 12px 16px; border-bottom: 1px solid var(--border);">
                     <h4 style="margin: 0; color: var(--primary); display: flex; justify-content: space-between; align-items:center;">
                         <span><i class="ph ph-storefront"></i> ${dName}</span>
