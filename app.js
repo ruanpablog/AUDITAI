@@ -55,7 +55,7 @@ const _genChecksum = (str) => {
         return 'auditai_main';
     };
 
-    const saveDB = (syncCloud = false) => {
+    const saveDB = (syncCloud = false, forceMain = false) => {
         if (db.audits) db.audits = db.audits.filter(a => a && a.id && a.date);
         const jsonStr = JSON.stringify(db);
         const checksum = _genChecksum(jsonStr);
@@ -63,14 +63,18 @@ const _genChecksum = (str) => {
         localStorage.setItem('auditai_db', JSON.stringify({
             data: obfuscated,
             sig: checksum
-		}));
+        }));
         
         if (syncCloud) {
-            const cloudId = getCloudId();
-            return supabase.from('app_state').upsert({ id: cloudId, db_data: db })
+            const cloudId = forceMain ? 'auditai_main' : getCloudId();
+            return supabase.from('app_state').upsert({ id: cloudId, db_data: db }, { onConflict: 'id' })
                 .then(({error}) => { 
                     if(error) {
                         console.error("Erro Sync Nuvem:", error);
+                        // Se for erro de RLS, dar uma dica no console
+                        if (error.message.includes('row-level security')) {
+                            console.warn("DICA: Verifique as políticas de RLS na tabela 'app_state' no Supabase.");
+                        }
                         throw error;
                     }
                     console.log(`Sincronizado com Nuvem (${cloudId}) com sucesso.`);
@@ -82,16 +86,21 @@ const _genChecksum = (str) => {
         const btn = document.getElementById('btn-publish-cloud');
         const originalHtml = btn.innerHTML;
         try {
-            if (!confirm("Deseja publicar seus dados atuais na nuvem? Isso tornará suas lojas e checklists visíveis para todos os usuários.")) return;
+            if (!confirm("Deseja publicar seus dados atuais na nuvem? Isso tornará suas lojas e checklists visíveis para todos os usuários (ID: auditai_main).")) return;
             
             btn.disabled = true;
             btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Publicando...';
             
-            await saveDB(true);
+            // Força a gravação no container MASTER (auditai_main)
+            await saveDB(true, true);
             
             alert("Dados publicados com sucesso! Agora todos os usuários terão acesso a estas informações.");
         } catch (err) {
-            alert("Erro ao publicar dados: " + err.message);
+            let msg = err.message;
+            if (msg.includes('row-level security')) {
+                msg = "Erro de Permissão (RLS). O Supabase não permitiu gravar esta nova linha. Role para baixo e siga as instruções de 'Correção Supabase'.";
+            }
+            alert("Erro ao publicar dados: " + msg);
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalHtml;
