@@ -340,6 +340,30 @@ const _genChecksum = (str) => {
 
     // Load from local storage
     const loadDB = async () => {
+        // 1. Tentar recuperar banco local para identificar o usuário antes do fetch
+        const stored = localStorage.getItem('auditai_db');
+        let localData = null;
+        if (stored) {
+            try {
+                let payload = JSON.parse(stored);
+                if (payload.data && payload.sig) {
+                    const jsonStr = _deobfuscate(payload.data);
+                    if (jsonStr) {
+                         const currentChecksum = _genChecksum(jsonStr);
+                         if (currentChecksum === payload.sig) localData = JSON.parse(jsonStr);
+                    }
+                } else if (payload.users) {
+                    localData = payload;
+                }
+            } catch (err) { console.error("Local parse error", err); }
+        }
+
+        // 2. Tentar restaurar sessão do currentUser antes de definir o cloudId
+        if (!currentUser && localData && localData.users) {
+            const sessionEmail = sessionStorage.getItem('auditai_session');
+            if (sessionEmail) currentUser = localData.users.find(u => (u.email || "").toLowerCase() === sessionEmail.toLowerCase());
+        }
+
         let cloudData = null;
         try {
             const cloudId = getCloudId();
@@ -350,31 +374,11 @@ const _genChecksum = (str) => {
                 cloudData = data.db_data;
                 console.log("Dados recuperados da Nuvem.");
             } else if (cloudId !== 'auditai_main') {
-                // Se não achou dado do usuário, tenta do master
                 const { data: mainData } = await supabase.from('app_state').select('db_data').eq('id', 'auditai_main').single();
                 if (mainData) cloudData = mainData.db_data;
             }
         } catch(err) {
             console.warn("Falha no Supabase. Fallback para LocalStorage:", err.message);
-        }
-
-        const stored = localStorage.getItem('auditai_db');
-        let localData = null;
-        if (stored) {
-            try {
-                let payload = JSON.parse(stored);
-                if (payload.data && payload.sig) {
-                    const jsonStr = _deobfuscate(payload.data);
-                    if (jsonStr) {
-                         const currentChecksum = _genChecksum(jsonStr);
-                         if (currentChecksum === payload.sig) {
-                             localData = JSON.parse(jsonStr);
-                         }
-                    }
-                } else if (payload.users) {
-                    localData = payload; // Old format
-                }
-            } catch (err) { console.error("Local parse error", err); }
         }
 
         // --- GLOBAL SYNC STRATEGY ---
@@ -723,6 +727,33 @@ const _genChecksum = (str) => {
             switchSection(btn.getAttribute('data-target'));
         });
     });
+
+    const btnManualSync = document.getElementById('btn-manual-sync');
+    if (btnManualSync) {
+        btnManualSync.addEventListener('click', async () => {
+            const originalHtml = btnManualSync.innerHTML;
+            try {
+                btnManualSync.disabled = true;
+                btnManualSync.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Sincronizando...';
+                
+                await loadDB();
+                updateAuthUI();
+                
+                // Forçar atualização de views se estiverem abertas
+                const activeSection = Array.from(contentSections).find(s => !s.classList.contains('hidden'));
+                if (activeSection && activeSection.id === 'audits-list-view') renderAuditHistory();
+                if (activeSection && activeSection.id === 'dashboard-view') renderDashboard();
+                
+                alert('Sincronização concluída com sucesso!');
+            } catch (err) {
+                console.error("Manual Sync Error:", err);
+                alert('Erro ao sincronizar: ' + err.message);
+            } finally {
+                btnManualSync.disabled = false;
+                btnManualSync.innerHTML = originalHtml;
+            }
+        });
+    }
 
     // Check auth on load
     updateAuthUI();
