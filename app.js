@@ -45,6 +45,10 @@ const _genChecksum = (str) => {
 
     const getCloudId = () => {
         if (currentUser) {
+            // Força ID de usuário para o administrador/Ruan para evitar divergência de container
+            if (currentUser.id === 'rec_ruan' || (currentUser.email && currentUser.email.toLowerCase() === 'ruangomes221102@gmail.com')) {
+                return 'auditai_user_rec_ruan';
+            }
             if (currentUser.companyId) return 'auditai_company_' + currentUser.companyId;
             return 'auditai_user_' + currentUser.id;
         }
@@ -456,7 +460,8 @@ const _genChecksum = (str) => {
         }
         
         if (db.companies && db.companies.length > 0 && (!ruanUser.companyId || ruanUser.companyId === '')) {
-            ruanUser.companyId = db.companies[0].id;
+            // Removida atribuição automática volátil de empresa para evitar quebra de sincronia
+            // ruanUser.companyId = db.companies[0].id;
         }
     };
     
@@ -2779,6 +2784,9 @@ function renderAdminSettings() {
     if (svc) svc.value = db.config.emailjs_service || '';
     if (tmp) tmp.value = db.config.emailjs_template || '';
     if (pub) pub.value = db.config.emailjs_public_key || '';
+
+    const syncIdEl = document.getElementById('cfg-sync-id');
+    if (syncIdEl) syncIdEl.value = getCloudId();
 }
 
 if (emailConfigForm) {
