@@ -988,6 +988,20 @@
                                 </div>
                             </div>
 
+                            <div style="margin-top: 32px; padding: 20px; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.05); border-radius: 8px;">
+                                <h3 style="color: #d97706; margin-bottom: 12px;"><i class="ph ph-shield-warning"></i> Correção do Erro de Permissão (RLS)</h3>
+                                <p style="font-size: 0.9rem; margin-bottom: 12px; color: var(--text-body);">Se você vê o erro <b>"RLS Policy"</b> ou <b>"Não permitiu gravar esta nova linha"</b>, siga estes passos no seu painel do Supabase:</p>
+                                <ol style="font-size: 0.85rem; color: var(--text-muted); margin-left: 20px; line-height: 1.6;">
+                                    <li>Abra o <b>SQL Editor</b> no menu lateral do Supabase.</li>
+                                    <li>Clique em <b>+ New Query</b>.</li>
+                                    <li>Copie e cole o código abaixo e clique em <b>RUN</b>:</li>
+                                </ol>
+                                <pre style="background: #1e293b; color: #f8fafc; padding: 12px; border-radius: 6px; font-size: 0.8rem; margin-top: 12px; overflow-x: auto; border: 1px solid #334155;">
+-- Liberar acesso para sincronia entre dispositivos
+DROP POLICY IF EXISTS "Enable all for all" ON app_state;
+CREATE POLICY "Enable all for all" ON app_state 
+FOR ALL USING (true) WITH CHECK (true);</pre>
+                            </div>
                         </div>
                     </div>
 
