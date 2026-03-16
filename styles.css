@@ -1338,6 +1338,12 @@ body.viewing-report .app-main {
     #report-company-logo {
         margin-bottom: 15px !important;
     }
+
+    .report-signatures {
+        grid-template-columns: 1fr !important;
+        gap: 60px !important;
+        margin-top: 30px !important;
+    }
     
     #report-view [style*="grid-template-columns: 1fr 1fr"] {
         grid-template-columns: 1fr !important;
