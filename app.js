@@ -395,21 +395,20 @@ const _genChecksum = (str) => {
         }
 
         // --- GLOBAL SYNC STRATEGY ---
-        // 1. If we have cloud data, it wins (Single Source of Truth)
+        let mergedAudits = [];
+        let auditsChanged = false;
+
+        // 1. Prioridade Nuvem para Configurações (Single Source of Truth)
         if (cloudData && cloudData.users) {
             db = cloudData;
-            // Update local copy
-            const jsonStr = JSON.stringify(db);
-            localStorage.setItem('auditai_db', JSON.stringify({
-                data: _obfuscate(jsonStr),
-                sig: _genChecksum(jsonStr)
-            }));
+            mergedAudits = [...(db.audits || [])];
         } 
-        // 2. Else if we only have local data, use it
+        // 2. Fallback Local para Configurações
         else if (localData && localData.users) {
             db = localData;
+            mergedAudits = [...(db.audits || [])];
         }
-        // 3. Fallback to defaults (New App)
+        // 3. Fallback para defaults (App Novo)
         else {
             db = {
                 users: localData && localData.users ? localData.users : [],
@@ -421,6 +420,36 @@ const _genChecksum = (str) => {
                 companies: cloudData && cloudData.companies ? cloudData.companies : [],
                 config: cloudData && cloudData.config ? cloudData.config : { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' }
             };
+        }
+
+        // --- SMART AUDIT MERGE ---
+        // Se temos dados locais e nuvem, precisamos garantir que as auditorias de AMBOS existam
+        if (localData && localData.audits && localData.audits.length > 0) {
+            localData.audits.forEach(localAudit => {
+                if (localAudit && localAudit.id) {
+                    const exists = mergedAudits.find(a => a.id === localAudit.id);
+                    if (!exists) {
+                        mergedAudits.push(localAudit);
+                        auditsChanged = true;
+                        console.log(`Auditoria local recuperada: ${localAudit.id}`);
+                    }
+                }
+            });
+        }
+        
+        db.audits = mergedAudits;
+
+        // Se o merge trouxe novos dados locais que não estavam na nuvem, sobe eles agora
+        if (auditsChanged) {
+             console.log("Novas auditorias detectadas. Sincronizando com a nuvem...");
+             saveDB(true);
+        } else if (cloudData) {
+             // Apenas atualiza o backup local se veio da nuvem
+             const jsonStr = JSON.stringify(db);
+             localStorage.setItem('auditai_db', JSON.stringify({
+                 data: _obfuscate(jsonStr),
+                 sig: _genChecksum(jsonStr)
+             }));
         }
         
         // Sanitizações globais e injeções (Ruan user)
