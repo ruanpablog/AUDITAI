@@ -1,0 +1,18 @@
+{
+  "name": "auditai",
+  "version": "1.0.0",
+  "description": "Sistema de Gestão de Auditorias e Checklists",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "audit",
+    "checklist",
+    "supabase",
+    "management"
+  ],
+  "author": "Ruan Gomes",
+  "license": "MIT"
+}
