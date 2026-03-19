@@ -550,6 +550,13 @@ const _genChecksum = (str) => {
                     document.getElementById('nav-admin').classList.add('hidden');
                 }
 
+                // Garantir visibilidade dos botões principais
+                document.querySelectorAll('.nav-btn').forEach(btn => {
+                    if (!btn.classList.contains('admin-only')) {
+                        btn.classList.remove('hidden');
+                    }
+                });
+
                 populateStores();
                 renderAuditHistory();
             }
@@ -1393,7 +1400,7 @@ const _genChecksum = (str) => {
                     
                     const isBad = b.dataset.val === 'ruim' || b.dataset.val === 'insuficiente';
                     
-                    if(isBad || isCritico) {
+                    if(isBad) {
                         obsEl.classList.remove('hidden');
                         treatyContainer.classList.remove('hidden');
                         photoLabel.classList.remove('hidden');
@@ -1434,14 +1441,14 @@ const _genChecksum = (str) => {
             const isCritico = itemEl.dataset.critical === "true";
             const isBad = val === 'ruim' || val === 'insuficiente';
 
-            if((isCritico || isBad) && !obs) {
+            if(isBad && !obs) {
                  errors.push(`Justifique o item: ${itemEl.querySelector('.audit-question').innerText.split(' CRÍTICO')[0]}`);
             }
-            if((isCritico || isBad) && !treaty) {
-                 errors.push(`Selecione a tratativa para o item crítico/ruim.`);
+            if(isBad && !treaty) {
+                 errors.push(`Selecione a tratativa para o item com nota baixa.`);
             }
-            if((isCritico || isBad) && !photo64) {
-                 errors.push(`A foto é obrigatória para itens críticos ou com nota baixa.`);
+            if(isBad && !photo64) {
+                 errors.push(`A foto é obrigatória para o item "${questionText}" por ter nota baixa.`);
             }
 
             catResponses.push({
