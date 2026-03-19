@@ -382,7 +382,8 @@
                     <button class="tab-btn active" data-tab="dash-overview">Visão Geral</button>
                     <button class="tab-btn" data-tab="dash-evolution">Evolução</button>
                     <button class="tab-btn" data-tab="dash-departments">Departamentos</button>
-                    <button class="tab-btn" data-tab="dash-ranking">Ranking</button>
+                    <button class="tab-btn" data-tab="dash-ranking">Ranking Geral</button>
+                    <button class="tab-btn" data-tab="dash-evo-ranking" style="background: var(--accent); color: white; border: none; font-weight: 600;">⭐ Ranking Evolução</button>
                 </div>
                 <div id="dash-overview" class="tab-content active">
                     <div class="card-grid">
@@ -445,6 +446,48 @@
                                         </tr>
                                     </thead>
                                     <tbody id="dash-ranking-table-body">
+                                        <!-- Populado via JS -->
+                                    </tbody>
+                                </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- NOVO: Tab de Evolução Gamificada -->
+                <div id="dash-evo-ranking" class="tab-content">
+                    <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-bottom: 24px;">
+                        <div class="glass" style="padding:20px; text-align: center;">
+                            <h3 style="margin-bottom:12px; font-size:1.1rem; color: var(--accent);">🏆 Líder de Evolução (Mês)</h3>
+                            <div id="evo-leader-display" style="font-size: 1.5rem; font-weight: 700; color: var(--text-heading);">--</div>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">A maior melhoria contínua</p>
+                        </div>
+                        <div class="glass" style="padding:20px; text-align: center;">
+                            <h3 style="margin-bottom:12px; font-size:1.1rem; color: var(--primary);">📈 Média de Evolução Geral</h3>
+                            <div id="evo-avg-display" style="font-size: 1.5rem; font-weight: 700; color: var(--text-heading);">--</div>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">Média de crescimento da rede</p>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="glass" style="padding:20px; flex: 2; min-height: 350px;">
+                            <h3 style="margin-bottom:16px; font-size:1.1rem;"><i class="ph ph-chart-line-up"></i> Evolução Comparativa de Performance</h3>
+                            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Desempenho mensal consolidado por unidade (Evolução de Notas)</p>
+                            <div style="position:relative; height: 300px; width: 100%;">
+                                <canvas id="chart-evo-comparison"></canvas>
+                            </div>
+                        </div>
+                        <div class="glass" style="padding:20px; flex: 1.5;">
+                            <h3 style="margin-bottom:16px; font-size:1.1rem;"><i class="ph ph-medal"></i> Ranking por Melhoria</h3>
+                            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Quanto cada gestor evoluiu em relação ao mês anterior</p>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table" style="font-size: 0.85rem;">
+                                    <thead>
+                                        <tr>
+                                            <th>Posição</th>
+                                            <th>Loja/Gerente</th>
+                                            <th>Nota Atual</th>
+                                            <th>Evolução</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dash-evo-ranking-table-body">
                                         <!-- Populado via JS -->
                                     </tbody>
                                 </table>
@@ -1049,8 +1092,35 @@ FOR ALL USING (true) WITH CHECK (true);</pre>
                             </div>
 
                             <h3 style="margin-bottom: 20px; display:flex; align-items:center; gap:10px;"><i class="ph ph-chart-bar" style="color:var(--primary);"></i> Desempenho por Departamento</h3>
-                            <div id="report-depts-summary">
+                            <div id="report-depts-summary" style="margin-bottom: 30px;">
                                 <!-- Barras de progresso dinâmicas -->
+                            </div>
+
+                            <!-- NOVA: Matriz de Decisão (Ações Operacionais vs Alçadas de Decisão) -->
+                            <div class="glass report-no-break" style="padding: 20px; border-top: 3px solid var(--primary); margin-bottom: 24px; background: #fff;">
+                                <h3 style="margin-bottom: 20px; display:flex; align-items:center; gap:10px; color: var(--primary);"><i class="ph ph-grid-four"></i> Matriz de Decisão: Plano de Ação</h3>
+                                <div class="report-matrix-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                    <!-- Coluna 1: Operacional -->
+                                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                                        <div style="background: #f8fafc; padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+                                            <h4 style="margin:0; font-size: 0.9rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Ações Operacionais</h4>
+                                            <p style="font-size: 0.7rem; color: #94a3b8; margin-top: 2px;">Equipe de loja / Correção imediata</p>
+                                        </div>
+                                        <div id="matrix-operational-list" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 100px;">
+                                            <p style="text-align:center; color: #cbd5e1; font-size: 0.8rem; margin-top: 20px;">Nenhuma ação pendente</p>
+                                        </div>
+                                    </div>
+                                    <!-- Coluna 2: Alçada de Decisão -->
+                                    <div style="border: 1px solid #fee2e2; border-radius: 8px; overflow: hidden;">
+                                        <div style="background: #fff1f2; padding: 12px; border-bottom: 1px solid #fee2e2; text-align: center;">
+                                            <h4 style="margin:0; font-size: 0.9rem; color: var(--danger); text-transform: uppercase; letter-spacing: 0.5px;">Alçadas de Decisão</h4>
+                                            <p style="font-size: 0.7rem; color: #f43f5e; margin-top: 2px;">Diretoria / Investimento / Estrutura</p>
+                                        </div>
+                                        <div id="matrix-director-list" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 100px;">
+                                            <p style="text-align:center; color: #cbd5e1; font-size: 0.8rem; margin-top: 20px;">Nenhuma alçada pendente</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div id="report-followup-container" class="hidden" style="border-top: 1px solid var(--border); padding-top: 24px; margin-top: 24px; margin-bottom: 24px;">

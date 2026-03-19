@@ -459,6 +459,17 @@ const _genChecksum = (str) => {
         db.audits = db.audits.filter(a => a && a.id && a.date);
         if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' };
 
+        // Injeção de Alçada de Decisão (Novo Campo)
+        if (db.checklistItems) {
+            db.checklistItems.forEach(item => {
+                if (item.eh_alcada === undefined) {
+                    // Itens específicos que são Alçada de Diretoria (Investimento/Estrutura)
+                    const alcadaIds = ['i110', 'i6', 'i97', 'i41', 'i126']; 
+                    item.eh_alcada = alcadaIds.includes(item.id);
+                }
+            });
+        }
+
         const needsUpdate = !db.checklistItems || db.checklistItems.length < 50 || db.checklistItems.some(i => !i.dept_id);
         if (needsUpdate) {
             db.categories = defaultCategories;
@@ -1253,6 +1264,7 @@ const _genChecksum = (str) => {
         
         items.forEach(item => {
             const criticoBadge = item.eh_critico ? '<span class="badge badge-danger">CRÍTICO</span>' : '';
+            const alcadaBadge = item.eh_alcada ? '<span class="badge badge-info" style="background:#dbeafe; color:#1e40af; border:none; margin-left:5px;">ALÇADA DIRETORIA</span>' : '';
             
             // Referência de "Antes" se for retorno
             let beforePhotoHtml = '';
@@ -1273,19 +1285,33 @@ const _genChecksum = (str) => {
             }
 
             html += `
-                <div class="audit-item" data-item="${item.id}" style="margin-bottom: 24px;">
-                    <p class="audit-question">${item.question} ${criticoBadge}</p>
+                <div class="audit-item" data-item="${item.id}" data-critical="${item.eh_critico}" data-alcada="${item.eh_alcada}" style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px dashed var(--border);">
+                    <p class="audit-question" style="font-weight: 600; margin-bottom: 12px;">${item.question} ${criticoBadge} ${alcadaBadge}</p>
                     ${beforePhotoHtml}
-                    <div class="rating-group">
+                    <div class="rating-group" style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="rating-btn ruim" data-val="ruim"><i class="ph ph-x-circle"></i> Ruim</button>
                          <button class="rating-btn insuficiente" data-val="insuficiente"><i class="ph ph-warning-circle"></i> Insuficiente</button>
                          <button class="rating-btn bom" data-val="bom"><i class="ph ph-check-circle"></i> Bom</button>
                          <button class="rating-btn excelente" data-val="excelente"><i class="ph ph-star"></i> Excelente</button>
                     </div>
-                    <textarea class="item-obs hidden" placeholder="Justifique (Obrigatório para Ruim)" style="margin-top: 8px;"></textarea>
-                    <button class="btn btn-ghost btn-add-photo" style="margin-top: 8px; font-size: 0.85rem;"><i class="ph ph-camera"></i> Adicionar Foto</button>
+                    
+                    <div class="treaty-container hidden" style="margin-top: 12px; background: rgba(0,0,0,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                        <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 5px;">STATUS DE TRATATIVA (OBRIGATÓRIO)</label>
+                        <select class="item-treaty" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.85rem;">
+                            <option value="">-- Selecione o Status --</option>
+                            <option value="Não Tratado">Não Tratado</option>
+                            <option value="Tratado no Ato">Tratado no Ato</option>
+                            <option value="Repassado para Terceiros">Repassado para Terceiros</option>
+                        </select>
+                    </div>
+
+                    <textarea class="item-obs hidden" placeholder="Justifique e detalhe o problema (Obrigatório para itens críticos/ruins)" style="margin-top: 12px; width:100%; min-height:80px;"></textarea>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px;">
+                        <button class="btn btn-ghost btn-add-photo" style="font-size: 0.85rem;"><i class="ph ph-camera"></i> Adicionar Foto</button>
+                        <span class="photo-required-label hidden" style="font-size: 0.7rem; color: var(--danger); font-weight: 600;">* FOTO OBRIGATÓRIA</span>
+                    </div>
                     <input type="file" class="hidden-photo-input hidden" accept="image/*">
-                    <div class="photo-preview-container" style="margin-top: 8px; display: none;"></div>
+                    <div class="photo-preview-container" style="margin-top: 12px; display: none;"></div>
                 </div>
             `;
         });
@@ -1298,9 +1324,12 @@ const _genChecksum = (str) => {
         document.querySelectorAll('.audit-item').forEach(itemEl => {
             const btns = itemEl.querySelectorAll('.rating-btn');
             const obsEl = itemEl.querySelector('.item-obs');
+            const treatyContainer = itemEl.querySelector('.treaty-container');
+            const photoLabel = itemEl.querySelector('.photo-required-label');
             const btnAddPhoto = itemEl.querySelector('.btn-add-photo');
             const fileInput = itemEl.querySelector('.hidden-photo-input');
             const previewContainer = itemEl.querySelector('.photo-preview-container');
+            const isCritico = itemEl.dataset.critical === "true";
 
             if(btnAddPhoto && fileInput) {
                 btnAddPhoto.addEventListener('click', () => {
@@ -1322,23 +1351,22 @@ const _genChecksum = (str) => {
                                 if (error) {
                                     console.error('Supabase Storage Error:', error);
                                     alert('Erro ao enviar foto para nuvem: ' + error.message);
-                                    btnAddPhoto.innerHTML = '<i class="ph ph-camera-plus"></i> Adicionar Foto';
+                                    btnAddPhoto.innerHTML = '<i class="ph ph-camera"></i> Adicionar Foto';
                                 } else {
                                     const { data: publicUrlData } = supabase.storage.from('audit_photos').getPublicUrl(fileName);
                                     if (publicUrlData && publicUrlData.publicUrl) {
                                         const url = publicUrlData.publicUrl;
                                         itemEl.dataset.photoBase64 = url;
-                                        previewContainer.innerHTML = `<img src="${url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
+                                        previewContainer.innerHTML = `<img src="${url}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
                                         previewContainer.style.display = 'block';
                                         btnAddPhoto.innerHTML = '<i class="ph ph-camera-rotate"></i> Trocar Foto';
-                                        // Auto save the snapshot
                                         saveDB();
                                     }
                                 }
                             })
                             .catch(err => {
                                 alert("Falha ao comunicar com armazenamento da nuvem.");
-                                btnAddPhoto.innerHTML = '<i class="ph ph-camera-plus"></i> Adicionar Foto';
+                                btnAddPhoto.innerHTML = '<i class="ph ph-camera"></i> Adicionar Foto';
                                 console.error(err);
                             })
                             .finally(() => {
@@ -1349,7 +1377,7 @@ const _genChecksum = (str) => {
                         reader.onload = (ev) => {
                             const base64 = ev.target.result;
                             itemEl.dataset.photoBase64 = base64;
-                            previewContainer.innerHTML = `<img src="${base64}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
+                            previewContainer.innerHTML = `<img src="${base64}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
                             previewContainer.style.display = 'block';
                             btnAddPhoto.innerHTML = '<i class="ph ph-camera-rotate"></i> Trocar Foto';
                         };
@@ -1363,12 +1391,16 @@ const _genChecksum = (str) => {
                     btns.forEach(x => x.classList.remove('active'));
                     b.classList.add('active');
                     
-                    if(b.dataset.val === 'ruim' || b.dataset.val === 'insuficiente') {
+                    const isBad = b.dataset.val === 'ruim' || b.dataset.val === 'insuficiente';
+                    
+                    if(isBad || isCritico) {
                         obsEl.classList.remove('hidden');
-                        obsEl.setAttribute('required', 'true');
+                        treatyContainer.classList.remove('hidden');
+                        photoLabel.classList.remove('hidden');
                     } else {
                         obsEl.classList.add('hidden');
-                        obsEl.removeAttribute('required');
+                        treatyContainer.classList.add('hidden');
+                        photoLabel.classList.add('hidden');
                     }
                 });
             });
@@ -1385,10 +1417,11 @@ const _genChecksum = (str) => {
         const respNameEl = document.getElementById('dept-responsible-name');
         const respName = respNameEl ? respNameEl.value : deptResponsibleName;
         if(!respName) { alert('Informe o nome do responsável pelo setor!'); return; }
-        deptResponsibleName = respName; // Save to memory for btn-finish-dept
+        deptResponsibleName = respName;
 
         let allAnswered = true;
         let catResponses = [];
+        let errors = [];
 
         document.querySelectorAll('.audit-item').forEach(itemEl => {
             const activeBtn = itemEl.querySelector('.rating-btn.active');
@@ -1396,24 +1429,39 @@ const _genChecksum = (str) => {
 
             const val = activeBtn.dataset.val;
             const obs = itemEl.querySelector('.item-obs').value;
-            
-            if(val === 'ruim' && !obs) {
-                allAnswered = false;
-                itemEl.querySelector('.item-obs').style.borderColor = 'var(--danger)';
+            const treaty = itemEl.querySelector('.item-treaty').value;
+            const photo64 = itemEl.dataset.photoBase64;
+            const isCritico = itemEl.dataset.critical === "true";
+            const isBad = val === 'ruim' || val === 'insuficiente';
+
+            if((isCritico || isBad) && !obs) {
+                 errors.push(`Justifique o item: ${itemEl.querySelector('.audit-question').innerText.split(' CRÍTICO')[0]}`);
+            }
+            if((isCritico || isBad) && !treaty) {
+                 errors.push(`Selecione a tratativa para o item crítico/ruim.`);
+            }
+            if((isCritico || isBad) && !photo64) {
+                 errors.push(`A foto é obrigatória para itens críticos ou com nota baixa.`);
             }
 
-            const photo64 = itemEl.dataset.photoBase64;
             catResponses.push({
                 itemId: itemEl.dataset.item,
                 catId: activeCategoryId,
                 value: val,
                 observations: obs,
-                photos: photo64 ? [photo64] : []
+                status_tratativa: treaty,
+                photos: photo64 ? [photo64] : [],
+                t: Date.now()
             });
         });
 
         if(!allAnswered) {
             alert('Por favor, responda todos os itens da categoria!');
+            return;
+        }
+
+        if(errors.length > 0) {
+            alert("BLOQUEIO DE CONFORMIDADE:\n\n" + errors.slice(0, 3).join('\n') + (errors.length > 3 ? "\n..." : ""));
             return;
         }
 
@@ -1604,6 +1652,46 @@ const _genChecksum = (str) => {
         else if(auditObj.classification === 'Regular') cBadge.classList.add('badge-warning');
         else cBadge.classList.add('badge-danger');
 
+        // --- POPULATE DECISION MATRIX ---
+        const opList = document.getElementById('matrix-operational-list');
+        const dirList = document.getElementById('matrix-director-list');
+        opList.innerHTML = '';
+        dirList.innerHTML = '';
+
+        let opCount = 0;
+        let dirCount = 0;
+
+        auditObj.departments.forEach(dept => {
+            dept.responses.forEach(resp => {
+                if (resp.value === 'ruim' || resp.value === 'insuficiente') {
+                    const item = db.checklistItems.find(i => i.id === resp.itemId);
+                    const isAlcada = item ? item.eh_alcada : false;
+
+                    const div = document.createElement('div');
+                    div.style = "padding: 8px; background: #fff; border: 1px solid #f1f5f9; border-radius: 4px; font-size: 0.8rem; line-height: 1.4;";
+                    div.innerHTML = `<strong>${item ? item.question : 'Item'}</strong><br>
+                                     <span style="color:#64748b; font-size: 0.7rem;">Status: ${resp.status_tratativa || 'Não Tratado'}</span>`;
+
+                    if (isAlcada) {
+                        dirList.appendChild(div);
+                        dirCount++;
+                    } else {
+                        opList.appendChild(div);
+                        opCount++;
+                    }
+                }
+            });
+        });
+
+        if (opCount === 0) opList.innerHTML = '<p style="text-align:center; color: #cbd5e1; font-size: 0.8rem; margin-top: 20px;">Nenhuma ação operacional pendente</p>';
+        if (dirCount === 0) dirList.innerHTML = '<p style="text-align:center; color: #cbd5e1; font-size: 0.8rem; margin-top: 20px;">Nenhuma alçada de diretoria detectada</p>';
+
+        // Mock Notification for Alçada Items
+        if (dirCount > 0) {
+            console.log("NOTIFICAÇÃO REAL-TIME: Itens de Alçada de Diretoria detectados. Enviando alerta para a Diretoria...");
+            // Aqui entraria a integração com Firebase/OneSignal
+        }
+        
         const deptContainer = document.getElementById('report-depts-summary');
         deptContainer.innerHTML = '';
         
@@ -2000,6 +2088,128 @@ const _genChecksum = (str) => {
                 </tr>
             `).join('');
         }
+    }
+
+    let dashChartEvoRanking = null;
+    function renderEvolutionRanking() {
+        const tbody = document.getElementById('dash-evo-ranking-table-body');
+        const leaderDisplay = document.getElementById('evo-leader-display');
+        const avgDisplay = document.getElementById('evo-avg-display');
+        if (!tbody) return;
+
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+        const evolutionData = [];
+        let totalEvo = 0;
+        let countEvo = 0;
+
+        db.stores.forEach(store => {
+            const storeAudits = db.audits.filter(a => a.storeId === store.id);
+            
+            const thisMonthAudits = storeAudits.filter(a => {
+                const d = new Date(a.date);
+                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            });
+
+            const prevMonthAudits = storeAudits.filter(a => {
+                const d = new Date(a.date);
+                return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear;
+            });
+
+            if (thisMonthAudits.length > 0 && prevMonthAudits.length > 0) {
+                const avgThis = thisMonthAudits.reduce((sum, a) => sum + a.percentage, 0) / thisMonthAudits.length;
+                const avgPrev = prevMonthAudits.reduce((sum, a) => sum + a.percentage, 0) / prevMonthAudits.length;
+                
+                const evoRate = avgPrev > 0 ? ((avgThis - avgPrev) / avgPrev) * 100 : 0;
+
+                evolutionData.push({
+                    name: store.name,
+                    currentScore: Math.round(avgThis),
+                    prevScore: Math.round(avgPrev),
+                    evoRate: parseFloat(evoRate.toFixed(1))
+                });
+                totalEvo += evoRate;
+                countEvo++;
+            }
+        });
+
+        evolutionData.sort((a, b) => b.evoRate - a.evoRate);
+
+        tbody.innerHTML = '';
+        evolutionData.forEach((item, idx) => {
+            const tr = document.createElement('tr');
+            const evoColor = item.evoRate > 0 ? 'var(--success)' : (item.evoRate < 0 ? 'var(--danger)' : 'var(--text-muted)');
+            const evoIcon = item.evoRate > 0 ? 'ph-trend-up' : (item.evoRate < 0 ? 'ph-trend-down' : 'ph-minus');
+            
+            tr.innerHTML = `
+                <td><span class="badge ${idx < 3 ? 'badge-accent' : 'badge-ghost'}">${idx + 1}º</span></td>
+                <td><div style="font-weight:600;">${item.name}</div></td>
+                <td>${item.currentScore}%</td>
+                <td><span style="color:${evoColor}; font-weight:700;"><i class="ph ${evoIcon}"></i> ${item.evoRate > 0 ? '+' : ''}${item.evoRate}%</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        if (evolutionData.length > 0) {
+            leaderDisplay.innerText = evolutionData[0].name;
+            avgDisplay.innerText = (countEvo > 0 ? (totalEvo / countEvo).toFixed(1) : 0) + '%';
+        } else {
+            leaderDisplay.innerText = "Dados insuficientes";
+            avgDisplay.innerText = "--";
+        }
+
+        const ctxEvo = document.getElementById('chart-evo-comparison');
+        if (dashChartEvoRanking) dashChartEvoRanking.destroy();
+        if (!ctxEvo) return;
+
+        const monthLabels = [];
+        for(let i=5; i>=0; i--) {
+            const d = new Date();
+            d.setMonth(now.getMonth() - i);
+            monthLabels.push(d.toLocaleDateString('pt-BR', { month: 'short' }));
+        }
+
+        const datasets = db.stores.slice(0, 5).map((store, idx) => {
+            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+            const data = [];
+            for(let i=5; i>=0; i--) {
+                const target = new Date();
+                target.setMonth(now.getMonth() - i);
+                const m = target.getMonth();
+                const y = target.getFullYear();
+                
+                const monthAudits = db.audits.filter(a => {
+                    const ad = new Date(a.date);
+                    return ad.getMonth() === m && ad.getFullYear() === y && a.storeId === store.id;
+                });
+                if (monthAudits.length > 0) {
+                    data.push(monthAudits.reduce((s, a) => s + a.percentage, 0) / monthAudits.length);
+                } else {
+                    data.push(null);
+                }
+            }
+            return {
+                label: store.name,
+                data: data,
+                borderColor: colors[idx % colors.length],
+                backgroundColor: colors[idx % colors.length],
+                tension: 0.3, fill: false
+            };
+        });
+
+        dashChartEvoRanking = new Chart(ctxEvo, {
+            type: 'line',
+            data: { labels: monthLabels, datasets: datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 10 } } } },
+                scales: { y: { beginAtZero: true, max: 100 } }
+            }
+        });
     }
 
     function renderCharts(audits, storeFilter) {
@@ -2415,7 +2625,12 @@ const _genChecksum = (str) => {
             document.querySelectorAll('#dashboard-view .tab-content').forEach(c => c.classList.remove('active'));
             
             btn.classList.add('active');
-            document.getElementById(btn.dataset.tab).classList.add('active');
+            const tabId = btn.dataset.tab;
+            document.getElementById(tabId).classList.add('active');
+
+            if (tabId === 'dash-evo-ranking') {
+                renderEvolutionRanking();
+            }
         });
     });
 
