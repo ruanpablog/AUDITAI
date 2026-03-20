@@ -559,6 +559,12 @@ const _genChecksum = (str) => {
 
                 populateStores();
                 renderAuditHistory();
+
+                // Garantir que uma seção esteja visível (padrão Histórico se nada estiver ativo)
+                const activeSection = Array.from(document.querySelectorAll('.content-section')).find(s => !s.classList.contains('hidden'));
+                if (!activeSection) {
+                    switchSection('audits-list-view');
+                }
             }
         } else {
             authView.classList.remove('hidden');
