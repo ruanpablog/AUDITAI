@@ -401,7 +401,15 @@ const _genChecksum = (str) => {
         // 1. Prioridade Nuvem para Configurações (Single Source of Truth)
         if (cloudData && cloudData.users) {
             db = cloudData;
-            mergedAudits = [...(db.audits || [])];
+            // Garantir que arrays existem
+            if (!db.audits) db.audits = [];
+            if (!db.stores) db.stores = defaultStores;
+            if (!db.departments) db.departments = defaultDepartments;
+            if (!db.categories) db.categories = defaultCategories;
+            if (!db.checklistItems) db.checklistItems = defaultChecklistItems;
+            if (!db.companies) db.companies = [];
+            
+            mergedAudits = [...db.audits];
         } 
         // 2. Fallback Local para Configurações
         else if (localData && localData.users) {
@@ -411,20 +419,20 @@ const _genChecksum = (str) => {
         // 3. Fallback para defaults (App Novo)
         else {
             db = {
-                users: localData && localData.users ? localData.users : [],
-                stores: cloudData && cloudData.stores ? cloudData.stores : defaultStores,
-                departments: cloudData && cloudData.departments ? cloudData.departments : defaultDepartments,
-                categories: cloudData && cloudData.categories ? cloudData.categories : defaultCategories,
-                checklistItems: cloudData && cloudData.checklistItems ? cloudData.checklistItems : defaultChecklistItems,
+                users: [],
+                stores: defaultStores,
+                departments: defaultDepartments,
+                categories: defaultCategories,
+                checklistItems: defaultChecklistItems,
                 audits: [],
-                companies: cloudData && cloudData.companies ? cloudData.companies : [],
-                config: cloudData && cloudData.config ? cloudData.config : { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' }
+                companies: [],
+                config: { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' }
             };
         }
 
         // --- SMART AUDIT MERGE ---
-        // Se temos dados locais e nuvem, precisamos garantir que as auditorias de AMBOS existam
-        if (localData && localData.audits && localData.audits.length > 0) {
+        // Recuperar auditorias locais que não estão na nuvem
+        if (localData && localData.audits && Array.isArray(localData.audits)) {
             localData.audits.forEach(localAudit => {
                 if (localAudit && localAudit.id) {
                     const exists = mergedAudits.find(a => a.id === localAudit.id);
