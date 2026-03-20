@@ -2433,23 +2433,39 @@ const _genChecksum = (str) => {
         });
     }
 
-        function renderAuditHistory() {
+    function renderAuditHistory() {
         const tbody = document.getElementById('audits-table-body');
-        if(!tbody) return;
-        tbody.innerHTML = '';
-        
+        if (!tbody) return;
+
         const audits = (db.audits || []).filter(a => a && a.date).sort((a,b) => new Date(b.date) - new Date(a.date));
-        
+
         if (audits.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhuma auditoria encontrada.</td></tr>';
+            // Mostra loading e tenta recarregar da nuvem
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color:var(--text-muted);"><i class="ph ph-cloud-arrow-down" style="font-size:1.5rem; display:block; margin-bottom:8px;"></i>Carregando auditorias...</td></tr>';
+            
+            loadDB().then(() => {
+                const reloaded = (db.audits || []).filter(a => a && a.date).sort((a,b) => new Date(b.date) - new Date(a.date));
+                if (reloaded.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhuma auditoria encontrada.</td></tr>';
+                } else {
+                    _renderHistoryRows(tbody, reloaded);
+                }
+            }).catch(() => {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--danger);">Erro ao carregar auditorias. Verifique sua conexão.</td></tr>';
+            });
             return;
         }
 
+        _renderHistoryRows(tbody, audits);
+    }
+
+    function _renderHistoryRows(tbody, audits) {
+        tbody.innerHTML = '';
         audits.forEach(aud => {
-            const store = db.stores.find(s => s.id === aud.storeId);
+            const store = (db.stores || []).find(s => s.id === aud.storeId);
             const storeName = store ? store.name : 'Loja Desconhecida';
             const dateStr = new Date(aud.date).toLocaleDateString('pt-BR') + ' ' + new Date(aud.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-            
+
             const badgeClass = aud.percentage >= 80 ? 'badge-success' : (aud.percentage >= 60 ? 'badge-warning' : 'badge-danger');
             let rating = 'Bom';
             if(aud.percentage < 60) rating = 'Insuficiente';
@@ -2458,7 +2474,7 @@ const _genChecksum = (str) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${dateStr}</td>
-                <td><strong>${storeName}</strong><br><small style="color:var(--text-muted);">${aud.type === 'padrao' ? 'Padrão' : 'Retornão'}</small></td>
+                <td><strong>${storeName}</strong><br><small style="color:var(--text-muted);">${aud.type === 'padrao' ? 'Padrão' : 'Retorno'}</small></td>
                 <td>${aud.auditor || '-'}</td>
                 <td><span class="badge ${badgeClass}">${aud.percentage}%</span></td>
                 <td>${rating}</td>
