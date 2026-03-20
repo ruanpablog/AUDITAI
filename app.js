@@ -323,32 +323,10 @@ const _genChecksum = (str) => {
     let activeCategoryId = null;
 
     // Theme application
-    const adjustColor = (hex, amt) => {
-        let usePound = false;
-        if (hex[0] === "#") {
-            hex = hex.slice(1);
-            usePound = true;
-        }
-        let num = parseInt(hex, 16);
-        let r = (num >> 16) + amt;
-        if (r > 255) r = 255; else if (r < 0) r = 0;
-        let b = ((num >> 8) & 0x00FF) + amt;
-        if (b > 255) b = 255; else if (b < 0) b = 0;
-        let g = (num & 0x0000FF) + amt;
-        if (g > 255) g = 255; else if (g < 0) g = 0;
-        return (usePound ? "#" : "") + (g | (b << 8) | (r << 16)).toString(16).padStart(6, '0');
-    };
-
     const applyTheme = (color) => {
         const root = document.documentElement;
         const primaryColor = color || '#ef4444';
-        let hoverColor = '#dc2626';
-        
-        try {
-            if (color) hoverColor = adjustColor(color, -20);
-        } catch (e) {
-            console.error("Error adjusting color:", e);
-        }
+        const hoverColor = color ? adjustColor(color, -20) : '#dc2626';
         
         root.style.setProperty('--primary-dept', primaryColor);
         root.style.setProperty('--primary-dept-hover', hoverColor);
@@ -805,36 +783,15 @@ const _genChecksum = (str) => {
     sidebarOverlay.addEventListener('click', closeSidebar);
 
     const switchSection = (sectionId) => {
-        console.log(`Switching to section: ${sectionId}`);
         contentSections.forEach(s => s.classList.add('hidden'));
-        const target = document.getElementById(sectionId);
-        if (target) {
-            target.classList.remove('hidden');
-        } else {
-            console.error(`Target section NOT FOUND: ${sectionId}`);
-        }
+        document.getElementById(sectionId).classList.remove('hidden');
 
         navBtns.forEach(b => b.classList.remove('active'));
         document.querySelector(`.nav-btn[data-target="${sectionId}"]`)?.classList.add('active');
 
-        // Proactive Rendering
-        if (sectionId === 'audits-list-view' && typeof renderAuditHistory === 'function') {
-            renderAuditHistory();
-        }
-        if (sectionId === 'dashboard-view' && typeof renderDashboard === 'function') {
-            renderDashboard();
-        }
+        
         if (sectionId === 'scheduled-audits-view' && typeof renderScheduledAudits === 'function') {
             renderScheduledAudits();
-        }
-        if (sectionId === 'admin-view') {
-            if (typeof renderAdminUsers === 'function') renderAdminUsers();
-            if (typeof renderAdminStores === 'function') renderAdminStores();
-            if (typeof window.renderAdminCompanies === 'function') window.renderAdminCompanies();
-            if (typeof window.renderAdminDepts === 'function') window.renderAdminDepts();
-            if (typeof window.renderAdminCategories === 'function') window.renderAdminCategories();
-            if (typeof window.renderAdminChecklists === 'function') window.renderAdminChecklists();
-            if (typeof renderAdminSettings === 'function') renderAdminSettings();
         }
 
         if (window.innerWidth <= 900) closeSidebar();
@@ -1965,22 +1922,12 @@ const _genChecksum = (str) => {
 
 
     window.viewReportModal = function(auditId) {
-        console.log(`Opening report for audit: ${auditId}`);
         const aud = db.audits.find(a => a.id === auditId);
         if(aud) {
             showReport(aud);
-            // Give extra time for DOM and charts to render
             setTimeout(() => {
-                const reportContent = document.getElementById('report-view');
-                if (reportContent && !reportContent.classList.contains('hidden')) {
-                    console.log("Triggering print...");
-                    window.print();
-                } else {
-                    console.warn("Report view not visible, skipping automatic print.");
-                }
-            }, 1200);
-        } else {
-            alert("Erro: Auditoria não encontrada no banco de dados.");
+                window.print();
+            }, 800);
         }
     };
 
@@ -2181,8 +2128,8 @@ const _genChecksum = (str) => {
         let totalEvo = 0;
         let countEvo = 0;
 
-        (db.stores || []).forEach(store => {
-            const storeAudits = (db.audits || []).filter(a => a && a.storeId === store.id);
+        db.stores.forEach(store => {
+            const storeAudits = db.audits.filter(a => a.storeId === store.id);
             
             const thisMonthAudits = storeAudits.filter(a => {
                 const d = new Date(a.date);
@@ -2194,65 +2141,46 @@ const _genChecksum = (str) => {
                 return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear;
             });
 
-            // Inclui a loja se tiver dados em QUALQUER dos meses (não exige os dois)
-            if (thisMonthAudits.length > 0 || prevMonthAudits.length > 0) {
-                const avgThis = thisMonthAudits.length > 0
-                    ? thisMonthAudits.reduce((sum, a) => sum + (a.percentage || 0), 0) / thisMonthAudits.length
-                    : null;
-                const avgPrev = prevMonthAudits.length > 0
-                    ? prevMonthAudits.reduce((sum, a) => sum + (a.percentage || 0), 0) / prevMonthAudits.length
-                    : null;
-
-                let evoRate = null;
-                if (avgThis !== null && avgPrev !== null && avgPrev > 0) {
-                    evoRate = parseFloat(((avgThis - avgPrev) / avgPrev * 100).toFixed(1));
-                    totalEvo += evoRate;
-                    countEvo++;
-                }
+            if (thisMonthAudits.length > 0 && prevMonthAudits.length > 0) {
+                const avgThis = thisMonthAudits.reduce((sum, a) => sum + a.percentage, 0) / thisMonthAudits.length;
+                const avgPrev = prevMonthAudits.reduce((sum, a) => sum + a.percentage, 0) / prevMonthAudits.length;
+                
+                const evoRate = avgPrev > 0 ? ((avgThis - avgPrev) / avgPrev) * 100 : 0;
 
                 evolutionData.push({
                     name: store.name,
-                    currentScore: avgThis !== null ? Math.round(avgThis) : null,
-                    prevScore: avgPrev !== null ? Math.round(avgPrev) : null,
-                    evoRate: evoRate
+                    currentScore: Math.round(avgThis),
+                    prevScore: Math.round(avgPrev),
+                    evoRate: parseFloat(evoRate.toFixed(1))
                 });
+                totalEvo += evoRate;
+                countEvo++;
             }
         });
 
-        evolutionData.sort((a, b) => {
-            if (a.evoRate !== null && b.evoRate !== null) return b.evoRate - a.evoRate;
-            if (a.evoRate !== null) return -1;
-            if (b.evoRate !== null) return 1;
-            return (b.currentScore || 0) - (a.currentScore || 0);
-        });
+        evolutionData.sort((a, b) => b.evoRate - a.evoRate);
 
         tbody.innerHTML = '';
-        if (evolutionData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhuma auditoria encontrada para o período atual.</td></tr>';
-        } else {
-            evolutionData.forEach((item, idx) => {
-                const tr = document.createElement('tr');
-                const evoColor = item.evoRate === null ? 'var(--text-muted)' : (item.evoRate > 0 ? '#10b981' : (item.evoRate < 0 ? 'var(--danger)' : 'var(--text-muted)'));
-                const evoIcon  = item.evoRate === null ? 'ph-minus' : (item.evoRate > 0 ? 'ph-trend-up' : (item.evoRate < 0 ? 'ph-trend-down' : 'ph-minus'));
-                const evoText  = item.evoRate === null ? '<em style="font-size:0.8rem;">Novo</em>' : `${item.evoRate > 0 ? '+' : ''}${item.evoRate}%`;
-                const scoreText = item.currentScore !== null ? `${item.currentScore}%` : `(mês ant. ${item.prevScore}%)`;
-
-                tr.innerHTML = `
-                    <td><span class="badge ${idx < 3 ? 'badge-accent' : 'badge-ghost'}">${idx + 1}º</span></td>
-                    <td><div style="font-weight:600;">${item.name}</div></td>
-                    <td>${scoreText}</td>
-                    <td><span style="color:${evoColor}; font-weight:700;"><i class="ph ${evoIcon}"></i> ${evoText}</span></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
+        evolutionData.forEach((item, idx) => {
+            const tr = document.createElement('tr');
+            const evoColor = item.evoRate > 0 ? 'var(--success)' : (item.evoRate < 0 ? 'var(--danger)' : 'var(--text-muted)');
+            const evoIcon = item.evoRate > 0 ? 'ph-trend-up' : (item.evoRate < 0 ? 'ph-trend-down' : 'ph-minus');
+            
+            tr.innerHTML = `
+                <td><span class="badge ${idx < 3 ? 'badge-accent' : 'badge-ghost'}">${idx + 1}º</span></td>
+                <td><div style="font-weight:600;">${item.name}</div></td>
+                <td>${item.currentScore}%</td>
+                <td><span style="color:${evoColor}; font-weight:700;"><i class="ph ${evoIcon}"></i> ${item.evoRate > 0 ? '+' : ''}${item.evoRate}%</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
 
         if (evolutionData.length > 0) {
-            if (leaderDisplay) leaderDisplay.innerText = evolutionData[0].name;
-            if (avgDisplay) avgDisplay.innerText = (countEvo > 0 ? (totalEvo / countEvo).toFixed(1) : '--') + '%';
+            leaderDisplay.innerText = evolutionData[0].name;
+            avgDisplay.innerText = (countEvo > 0 ? (totalEvo / countEvo).toFixed(1) : 0) + '%';
         } else {
-            if (leaderDisplay) leaderDisplay.innerText = 'Sem dados';
-            if (avgDisplay) avgDisplay.innerText = '--';
+            leaderDisplay.innerText = "Dados insuficientes";
+            avgDisplay.innerText = "--";
         }
 
         const ctxEvo = document.getElementById('chart-evo-comparison');
@@ -2433,39 +2361,23 @@ const _genChecksum = (str) => {
         });
     }
 
-    function renderAuditHistory() {
+        function renderAuditHistory() {
         const tbody = document.getElementById('audits-table-body');
-        if (!tbody) return;
-
-        const audits = (db.audits || []).filter(a => a && a.date).sort((a,b) => new Date(b.date) - new Date(a.date));
-
+        if(!tbody) return;
+        tbody.innerHTML = '';
+        
+        const audits = db.audits.sort((a,b) => new Date(b.date) - new Date(a.date));
+        
         if (audits.length === 0) {
-            // Mostra loading e tenta recarregar da nuvem
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color:var(--text-muted);"><i class="ph ph-cloud-arrow-down" style="font-size:1.5rem; display:block; margin-bottom:8px;"></i>Carregando auditorias...</td></tr>';
-            
-            loadDB().then(() => {
-                const reloaded = (db.audits || []).filter(a => a && a.date).sort((a,b) => new Date(b.date) - new Date(a.date));
-                if (reloaded.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhuma auditoria encontrada.</td></tr>';
-                } else {
-                    _renderHistoryRows(tbody, reloaded);
-                }
-            }).catch(() => {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--danger);">Erro ao carregar auditorias. Verifique sua conexão.</td></tr>';
-            });
+            tbody.innerHTML = '<tr><td colspan=""6"" style=""text-align:center; padding: 20px; color: var(--text-muted);"">Nenhuma auditoria encontrada.</td></tr>';
             return;
         }
 
-        _renderHistoryRows(tbody, audits);
-    }
-
-    function _renderHistoryRows(tbody, audits) {
-        tbody.innerHTML = '';
         audits.forEach(aud => {
-            const store = (db.stores || []).find(s => s.id === aud.storeId);
+            const store = db.stores.find(s => s.id === aud.storeId);
             const storeName = store ? store.name : 'Loja Desconhecida';
             const dateStr = new Date(aud.date).toLocaleDateString('pt-BR') + ' ' + new Date(aud.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-
+            
             const badgeClass = aud.percentage >= 80 ? 'badge-success' : (aud.percentage >= 60 ? 'badge-warning' : 'badge-danger');
             let rating = 'Bom';
             if(aud.percentage < 60) rating = 'Insuficiente';
@@ -2474,7 +2386,7 @@ const _genChecksum = (str) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${dateStr}</td>
-                <td><strong>${storeName}</strong><br><small style="color:var(--text-muted);">${aud.type === 'padrao' ? 'Padrão' : 'Retorno'}</small></td>
+                <td><strong>${storeName}</strong><br><small style="color:var(--text-muted);">${aud.type === 'padrao' ? 'Padrão' : 'Retornão'}</small></td>
                 <td>${aud.auditor || '-'}</td>
                 <td><span class="badge ${badgeClass}">${aud.percentage}%</span></td>
                 <td>${rating}</td>
@@ -2714,11 +2626,6 @@ const _genChecksum = (str) => {
     document.getElementById('nav-admin').addEventListener('click', () => {
         renderAdminUsers();
         renderAdminStores();
-        if (typeof window.renderAdminCompanies === 'function') window.renderAdminCompanies();
-        if (typeof window.renderAdminDepts === 'function') window.renderAdminDepts();
-        if (typeof window.renderAdminCategories === 'function') window.renderAdminCategories();
-        if (typeof window.renderAdminChecklists === 'function') window.renderAdminChecklists();
-        if (typeof renderAdminSettings === 'function') renderAdminSettings();
     });
 
     // Admin Tabs Logic
