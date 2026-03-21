@@ -783,15 +783,31 @@ const _genChecksum = (str) => {
     sidebarOverlay.addEventListener('click', closeSidebar);
 
     const switchSection = (sectionId) => {
+        if (!sectionId) return;
         contentSections.forEach(s => s.classList.add('hidden'));
-        document.getElementById(sectionId).classList.remove('hidden');
+        const target = document.getElementById(sectionId);
+        if (target) {
+            target.classList.remove('hidden');
+        } else {
+            console.warn('switchSection: section not found:', sectionId);
+            return;
+        }
 
         navBtns.forEach(b => b.classList.remove('active'));
         document.querySelector(`.nav-btn[data-target="${sectionId}"]`)?.classList.add('active');
 
-        
-        if (sectionId === 'scheduled-audits-view' && typeof renderScheduledAudits === 'function') {
-            renderScheduledAudits();
+        // Renderização proativa por seção
+        if (sectionId === 'audits-list-view' && typeof renderAuditHistory === 'function') renderAuditHistory();
+        if (sectionId === 'dashboard-view' && typeof renderDashboard === 'function') renderDashboard();
+        if (sectionId === 'scheduled-audits-view' && typeof renderScheduledAudits === 'function') renderScheduledAudits();
+        if (sectionId === 'admin-view') {
+            if (typeof renderAdminUsers === 'function') renderAdminUsers();
+            if (typeof renderAdminStores === 'function') renderAdminStores();
+            if (typeof window.renderAdminCompanies === 'function') window.renderAdminCompanies();
+            if (typeof window.renderAdminDepts === 'function') window.renderAdminDepts();
+            if (typeof window.renderAdminCategories === 'function') window.renderAdminCategories();
+            if (typeof window.renderAdminChecklists === 'function') window.renderAdminChecklists();
+            if (typeof renderAdminSettings === 'function') renderAdminSettings();
         }
 
         if (window.innerWidth <= 900) closeSidebar();
@@ -2141,46 +2157,64 @@ const _genChecksum = (str) => {
                 return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear;
             });
 
-            if (thisMonthAudits.length > 0 && prevMonthAudits.length > 0) {
-                const avgThis = thisMonthAudits.reduce((sum, a) => sum + a.percentage, 0) / thisMonthAudits.length;
-                const avgPrev = prevMonthAudits.reduce((sum, a) => sum + a.percentage, 0) / prevMonthAudits.length;
-                
-                const evoRate = avgPrev > 0 ? ((avgThis - avgPrev) / avgPrev) * 100 : 0;
+            if (thisMonthAudits.length > 0 || prevMonthAudits.length > 0) {
+                const avgThis = thisMonthAudits.length > 0
+                    ? thisMonthAudits.reduce((sum, a) => sum + (a.percentage || 0), 0) / thisMonthAudits.length
+                    : null;
+                const avgPrev = prevMonthAudits.length > 0
+                    ? prevMonthAudits.reduce((sum, a) => sum + (a.percentage || 0), 0) / prevMonthAudits.length
+                    : null;
+
+                let evoRate = null;
+                if (avgThis !== null && avgPrev !== null && avgPrev > 0) {
+                    evoRate = parseFloat(((avgThis - avgPrev) / avgPrev * 100).toFixed(1));
+                    totalEvo += evoRate;
+                    countEvo++;
+                }
 
                 evolutionData.push({
                     name: store.name,
-                    currentScore: Math.round(avgThis),
-                    prevScore: Math.round(avgPrev),
-                    evoRate: parseFloat(evoRate.toFixed(1))
+                    currentScore: avgThis !== null ? Math.round(avgThis) : null,
+                    prevScore: avgPrev !== null ? Math.round(avgPrev) : null,
+                    evoRate: evoRate
                 });
-                totalEvo += evoRate;
-                countEvo++;
             }
         });
 
-        evolutionData.sort((a, b) => b.evoRate - a.evoRate);
-
-        tbody.innerHTML = '';
-        evolutionData.forEach((item, idx) => {
-            const tr = document.createElement('tr');
-            const evoColor = item.evoRate > 0 ? 'var(--success)' : (item.evoRate < 0 ? 'var(--danger)' : 'var(--text-muted)');
-            const evoIcon = item.evoRate > 0 ? 'ph-trend-up' : (item.evoRate < 0 ? 'ph-trend-down' : 'ph-minus');
-            
-            tr.innerHTML = `
-                <td><span class="badge ${idx < 3 ? 'badge-accent' : 'badge-ghost'}">${idx + 1}º</span></td>
-                <td><div style="font-weight:600;">${item.name}</div></td>
-                <td>${item.currentScore}%</td>
-                <td><span style="color:${evoColor}; font-weight:700;"><i class="ph ${evoIcon}"></i> ${item.evoRate > 0 ? '+' : ''}${item.evoRate}%</span></td>
-            `;
-            tbody.appendChild(tr);
+        evolutionData.sort((a, b) => {
+            if (a.evoRate !== null && b.evoRate !== null) return b.evoRate - a.evoRate;
+            if (a.evoRate !== null) return -1;
+            if (b.evoRate !== null) return 1;
+            return (b.currentScore || 0) - (a.currentScore || 0);
         });
 
-        if (evolutionData.length > 0) {
-            leaderDisplay.innerText = evolutionData[0].name;
-            avgDisplay.innerText = (countEvo > 0 ? (totalEvo / countEvo).toFixed(1) : 0) + '%';
+        tbody.innerHTML = '';
+        if (evolutionData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhuma auditoria encontrada para o período.</td></tr>';
         } else {
-            leaderDisplay.innerText = "Dados insuficientes";
-            avgDisplay.innerText = "--";
+            evolutionData.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                const evoColor = item.evoRate === null ? 'var(--text-muted)' : (item.evoRate > 0 ? '#10b981' : (item.evoRate < 0 ? 'var(--danger)' : 'var(--text-muted)'));
+                const evoIcon  = item.evoRate === null ? 'ph-minus' : (item.evoRate > 0 ? 'ph-trend-up' : (item.evoRate < 0 ? 'ph-trend-down' : 'ph-minus'));
+                const evoText  = item.evoRate === null ? '<em style="font-size:0.8rem; color:var(--text-muted);">Novo</em>' : `${item.evoRate > 0 ? '+' : ''}${item.evoRate}%`;
+                const scoreText = item.currentScore !== null ? `${item.currentScore}%` : `(mês ant. ${item.prevScore}%)`;
+
+                tr.innerHTML = `
+                    <td><span class="badge ${idx < 3 ? 'badge-accent' : 'badge-ghost'}">${idx + 1}º</span></td>
+                    <td><div style="font-weight:600;">${item.name}</div></td>
+                    <td>${scoreText}</td>
+                    <td><span style="color:${evoColor}; font-weight:700;"><i class="ph ${evoIcon}"></i> ${evoText}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        if (evolutionData.length > 0) {
+            if (leaderDisplay) leaderDisplay.innerText = evolutionData[0].name;
+            if (avgDisplay) avgDisplay.innerText = (countEvo > 0 ? (totalEvo / countEvo).toFixed(1) : '--') + '%';
+        } else {
+            if (leaderDisplay) leaderDisplay.innerText = 'Sem dados';
+            if (avgDisplay) avgDisplay.innerText = '--';
         }
 
         const ctxEvo = document.getElementById('chart-evo-comparison');
@@ -2361,32 +2395,50 @@ const _genChecksum = (str) => {
         });
     }
 
-        function renderAuditHistory() {
+    function renderAuditHistory() {
         const tbody = document.getElementById('audits-table-body');
-        if(!tbody) return;
-        tbody.innerHTML = '';
-        
-        const audits = db.audits.sort((a,b) => new Date(b.date) - new Date(a.date));
-        
-        if (audits.length === 0) {
-            tbody.innerHTML = '<tr><td colspan=""6"" style=""text-align:center; padding: 20px; color: var(--text-muted);"">Nenhuma auditoria encontrada.</td></tr>';
+        if (!tbody) return;
+
+        const allAudits = (db.audits || []).filter(a => a && a.date);
+
+        if (allAudits.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);"><i class="ph ph-cloud-arrow-down" style="font-size:1.5rem;display:block;margin-bottom:8px;"></i>Carregando auditorias...</td></tr>';
+            loadDB().then(() => {
+                const reloaded = (db.audits || []).filter(a => a && a.date).sort((a, b) => new Date(b.date) - new Date(a.date));
+                if (reloaded.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhuma auditoria encontrada.</td></tr>';
+                } else {
+                    _fillHistoryTable(tbody, reloaded);
+                }
+            }).catch(() => {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--danger);">Erro ao carregar. Verifique sua conexão e tente sincronizar.</td></tr>';
+            });
             return;
         }
 
+        const audits = allAudits.sort((a, b) => new Date(b.date) - new Date(a.date));
+        _fillHistoryTable(tbody, audits);
+    }
+
+    function _fillHistoryTable(tbody, audits) {
+        tbody.innerHTML = '';
         audits.forEach(aud => {
-            const store = db.stores.find(s => s.id === aud.storeId);
+            const store = (db.stores || []).find(s => s.id === aud.storeId);
             const storeName = store ? store.name : 'Loja Desconhecida';
-            const dateStr = new Date(aud.date).toLocaleDateString('pt-BR') + ' ' + new Date(aud.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-            
+            const d = new Date(aud.date);
+            const dateStr = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+
             const badgeClass = aud.percentage >= 80 ? 'badge-success' : (aud.percentage >= 60 ? 'badge-warning' : 'badge-danger');
             let rating = 'Bom';
-            if(aud.percentage < 60) rating = 'Insuficiente';
-            if(aud.percentage >= 90) rating = 'Excelente';
+            if (aud.percentage < 60) rating = 'Insuficiente';
+            if (aud.percentage >= 90) rating = 'Excelente';
+
+            const typeLabel = aud.type === 'padrao' ? 'Padrão' : 'Retorno';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${dateStr}</td>
-                <td><strong>${storeName}</strong><br><small style="color:var(--text-muted);">${aud.type === 'padrao' ? 'Padrão' : 'Retornão'}</small></td>
+                <td><strong>${storeName}</strong><br><small style="color:var(--text-muted);">${typeLabel}</small></td>
                 <td>${aud.auditor || '-'}</td>
                 <td><span class="badge ${badgeClass}">${aud.percentage}%</span></td>
                 <td>${rating}</td>
@@ -2626,6 +2678,11 @@ const _genChecksum = (str) => {
     document.getElementById('nav-admin').addEventListener('click', () => {
         renderAdminUsers();
         renderAdminStores();
+        if (typeof window.renderAdminCompanies === 'function') window.renderAdminCompanies();
+        if (typeof window.renderAdminDepts === 'function') window.renderAdminDepts();
+        if (typeof window.renderAdminCategories === 'function') window.renderAdminCategories();
+        if (typeof window.renderAdminChecklists === 'function') window.renderAdminChecklists();
+        if (typeof renderAdminSettings === 'function') renderAdminSettings();
     });
 
     // Admin Tabs Logic
