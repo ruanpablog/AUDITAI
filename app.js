@@ -566,13 +566,13 @@ const _genChecksum = (str) => {
                 });
 
                 populateStores();
-                renderAuditHistory();
 
-                // Garantir que uma seção esteja visível (padrão Histórico se nada estiver ativo)
+                // Ao entrar no app, garantir que uma seção esteja visível
                 const activeSection = Array.from(document.querySelectorAll('.content-section')).find(s => !s.classList.contains('hidden'));
                 if (!activeSection) {
                     switchSection('audits-list-view');
                 }
+
             }
         } else {
             authView.classList.remove('hidden');
@@ -2477,15 +2477,7 @@ const _genChecksum = (str) => {
         }
     };
 
-    // Attach to history nav
-    const historyBtn = document.querySelector('.nav-btn[data-target="audits-list-view"]');
-    if(historyBtn) {
-        historyBtn.addEventListener('click', renderAuditHistory);
-    }
-
-    // Call render dashboard when switching to it
-    document.getElementById('nav-dashboard').addEventListener('click', renderDashboard);
-    
+    // btn-apply-dash-filters re-renders dashboard with new filters
     document.getElementById('btn-apply-dash-filters').addEventListener('click', renderDashboard);
 
     // ==========================================
