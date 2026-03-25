@@ -1686,32 +1686,7 @@ const _genChecksum = (str) => {
 
         cBadge.innerHTML = `<i class="ph ${iconClass}" style="font-size: 1.2rem;"></i> ${classification}`;
 
-        // --- POPULATE MAIN PHOTO HIGHLIGHT ---
-        const mainPhotoContainer = document.getElementById('report-main-photo-container');
-        const mainPhotoImg = document.getElementById('report-main-photo');
-        let firstPhoto = null;
 
-        // Buscar a primeira foto em todos os departamentos e itens
-        if (auditObj.departments) {
-            for (const dept of auditObj.departments) {
-                if (dept.responses) {
-                    for (const resp of dept.responses) {
-                        if (resp.photos && resp.photos.length > 0) {
-                            firstPhoto = resp.photos[0];
-                            break;
-                        }
-                    }
-                }
-                if (firstPhoto) break;
-            }
-        }
-
-        if (firstPhoto && mainPhotoContainer && mainPhotoImg) {
-            mainPhotoImg.src = firstPhoto;
-            mainPhotoContainer.classList.remove('hidden');
-        } else if (mainPhotoContainer) {
-            mainPhotoContainer.classList.add('hidden');
-        }
 
         // --- POPULATE DECISION MATRIX ---
         const opList = document.getElementById('matrix-operational-list');

@@ -762,13 +762,13 @@ label {
     }
 
     .glass {
-        background: #fdfdfd !important;
-        backdrop-filter: none !important;
-        border: 1px solid #e2e8f0 !important;
+        background: #fff !important;
+        border: 1px solid #cbd5e1 !important;
         padding: 24px !important;
         margin-bottom: 24px !important;
-        box-shadow: none !important;
         border-radius: 12px !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
 
     /* Manter cores de destaque */
@@ -791,18 +791,11 @@ label {
     .report-signatures {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
-        display: grid !important;
         margin-top: 30px !important;
     }
 
-    #report-main-photo-container {
-        display: block !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-    }
-
     .progress-wrap {
-        border: 1px solid #ccc !important;
+        border: 1px solid #cbd5e1 !important;
     }
 }
 
