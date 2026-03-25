@@ -732,100 +732,95 @@ label {
    PRINT OPTIMIZATION
 ========================================= */
 @media print {
-    .app-sidebar,
-    .sidebar-overlay,
-    .mobile-top,
-    .no-print,
-    #btn-back-report,
-    header,
-    nav {
-        display: none !important;
-    }
-
     body {
         background: #fff !important;
         color: #000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Esconder elementos de interface */
+    .app-sidebar, .sidebar-overlay, .mobile-top, .no-print, #btn-back-report, header, nav, .btn {
+        display: none !important;
     }
 
     .app-main {
         overflow: visible !important;
-        height: auto !important;
-        margin: 0 !important;
         padding: 0 !important;
+        margin: 0 !important;
         width: 100% !important;
     }
 
-    .page {
+    /* O Relatório deve ser IDENTICO à tela */
+    #report-view {
+        width: 100% !important;
+        max-width: none !important;
         margin: 0 !important;
         padding: 0 !important;
-        max-width: none !important;
+        background: #fff !important;
     }
 
     .glass {
         background: #fff !important;
-        border: 1px solid #cbd5e1 !important;
-        padding: 24px !important;
+        border: 1px solid #cbd5e1 !important; /* Borda visível para substituir o glass */
+        padding: 30px !important; /* Idêntico ao padding da tela */
         margin-bottom: 24px !important;
-        border-radius: 12px !important;
+        border-radius: 20px !important; /* Idêntico ao design original */
         page-break-inside: avoid !important;
         break-inside: avoid !important;
-        display: block !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
+        box-shadow: none !important;
     }
 
-    /* Manter cores de destaque e ícones */
+    /* Forçar cores para badges e indicadores */
     .badge {
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 4px !important;
-        border-radius: 4px !important;
-        padding: 4px 8px !important;
-        font-weight: 600 !important;
-        font-size: 0.75rem !important;
-        border: 1px solid #ddd !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        border: 1px solid #e2e8f0 !important;
+        font-weight: 700 !important;
     }
 
-    .badge-success { color: #059669 !important; border-color: #10b981 !important; background: #ecfdf5 !important; }
-    .badge-info { color: #2563eb !important; border-color: #3b82f6 !important; background: #eff6ff !important; }
-    .badge-warning { color: #d97706 !important; border-color: #f59e0b !important; background: #fffbeb !important; }
-    .badge-danger { color: #dc2626 !important; border-color: #ef4444 !important; background: #fef2f2 !important; }
+    .badge-success { background-color: #ecfdf5 !important; color: #059669 !important; border-color: #10b981 !important; }
+    .badge-info { background-color: #eff6ff !important; color: #2563eb !important; border-color: #3b82f6 !important; }
+    .badge-warning { background-color: #fffbeb !important; color: #d97706 !important; border-color: #f59e0b !important; }
+    .badge-danger { background-color: #fef2f2 !important; color: #dc2626 !important; border-color: #ef4444 !important; }
 
-    /* Caixa de Retorno (Destaque Vermelho) */
+    /* Itens de Auditoria (Borda lateral colorida) */
+    .report-no-break {
+        border-left: 6px solid #cbd5e1 !important; /* Fallback */
+    }
+
+    /* Garantir que as cores de cada item apareçam */
+    [style*="border-left: 4px solid #ef4444"] { border-left: 8px solid #ef4444 !important; }
+    [style*="border-left: 4px solid #f59e0b"] { border-left: 8px solid #f59e0b !important; }
+    [style*="border-left: 4px solid #3b82f6"] { border-left: 8px solid #3b82f6 !important; }
+    [style*="border-left: 4px solid #10b981"] { border-left: 8px solid #10b981 !important; }
+
+    /* Caixa de Aviso de Retorno */
     #report-return-action-container div {
         border: 2px dashed #ef4444 !important;
         background: #fff !important;
         color: #ef4444 !important;
+        padding: 20px !important;
     }
 
-    /* Forçar cores de impressão */
-    * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-
-    /* Garantir que as assinaturas fiquem juntas na mesma página */
+    /* Signatures */
     .report-signatures {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-        margin-top: 40px !important;
         display: grid !important;
         grid-template-columns: 1fr 1fr 1fr !important;
-        gap: 20px !important;
+        gap: 30px !important;
+        margin-top: 50px !important;
+        page-break-inside: avoid !important;
     }
 
     .report-signatures div {
-        text-align: center !important;
+        border-top: 1px solid #333 !important; /* Usar border-top para a linha de assinatura */
+        padding-top: 10px !important;
+        margin-top: 40px !important;
     }
+    
+    .report-signatures div div { display: none !important; } /* Esconder a div de borda interna */
 
-    .progress-wrap {
-        border: 1px solid #cbd5e1 !important;
-        height: 10px !important;
-        background: #f1f5f9 !important;
-    }
-
-    .progress-fill {
-        height: 100% !important;
+    * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
