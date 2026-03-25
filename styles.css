@@ -769,33 +769,65 @@ label {
         border-radius: 12px !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
-    /* Manter cores de destaque */
-    .badge-success { background-color: #d1fae5 !important; color: #065f46 !important; border: 1px solid #10b981 !important; }
-    .badge-info { background-color: #dbeafe !important; color: #1e40af !important; border: 1px solid #3b82f6 !important; }
-    .badge-warning { background-color: #fef3c7 !important; color: #92400e !important; border: 1px solid #f59e0b !important; }
-    .badge-danger { background-color: #fee2e2 !important; color: #991b1b !important; border: 1px solid #ef4444 !important; }
+    /* Manter cores de destaque e ícones */
+    .badge {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        border-radius: 4px !important;
+        padding: 4px 8px !important;
+        font-weight: 600 !important;
+        font-size: 0.75rem !important;
+        border: 1px solid #ddd !important;
+    }
 
-    /* ForÃ§ar cores de impressÃ£o caso o navegador as desabilite */
+    .badge-success { color: #059669 !important; border-color: #10b981 !important; background: #ecfdf5 !important; }
+    .badge-info { color: #2563eb !important; border-color: #3b82f6 !important; background: #eff6ff !important; }
+    .badge-warning { color: #d97706 !important; border-color: #f59e0b !important; background: #fffbeb !important; }
+    .badge-danger { color: #dc2626 !important; border-color: #ef4444 !important; background: #fef2f2 !important; }
+
+    /* Caixa de Retorno (Destaque Vermelho) */
+    #report-return-action-container div {
+        border: 2px dashed #ef4444 !important;
+        background: #fff !important;
+        color: #ef4444 !important;
+    }
+
+    /* Forçar cores de impressão */
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
-    }
-
-    .badge {
-        border: 1px solid #ccc !important;
     }
 
     /* Garantir que as assinaturas fiquem juntas na mesma página */
     .report-signatures {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
-        margin-top: 30px !important;
+        margin-top: 40px !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr 1fr !important;
+        gap: 20px !important;
+    }
+
+    .report-signatures div {
+        text-align: center !important;
     }
 
     .progress-wrap {
         border: 1px solid #cbd5e1 !important;
+        height: 10px !important;
+        background: #f1f5f9 !important;
+    }
+
+    .progress-fill {
+        height: 100% !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 }
 
