@@ -780,6 +780,20 @@ label {
         border: 1px solid #ccc !important;
     }
 
+    /* Garantir que as assinaturas fiquem juntas na mesma página */
+    .report-signatures {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        display: grid !important;
+        margin-top: 30px !important;
+    }
+
+    #report-main-photo-container {
+        display: block !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
     .progress-wrap {
         border: 1px solid #ccc !important;
     }
