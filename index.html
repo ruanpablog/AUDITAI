@@ -1096,32 +1096,7 @@ FOR ALL USING (true) WITH CHECK (true);</pre>
                                 <!-- Barras de progresso dinâmicas -->
                             </div>
 
-                            <!-- NOVA: Matriz de Decisão (Ações Operacionais vs Alçadas de Decisão) -->
-                            <div class="glass report-no-break" style="padding: 20px; border-top: 3px solid var(--primary); margin-bottom: 24px; background: #fff;">
-                                <h3 style="margin-bottom: 20px; display:flex; align-items:center; gap:10px; color: var(--primary);"><i class="ph ph-grid-four"></i> Matriz de Decisão: Plano de Ação</h3>
-                                <div class="report-matrix-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                                    <!-- Coluna 1: Operacional -->
-                                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                                        <div style="background: #f8fafc; padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">
-                                            <h4 style="margin:0; font-size: 0.9rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Ações Operacionais</h4>
-                                            <p style="font-size: 0.7rem; color: #94a3b8; margin-top: 2px;">Equipe de loja / Correção imediata</p>
-                                        </div>
-                                        <div id="matrix-operational-list" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 100px;">
-                                            <p style="text-align:center; color: #cbd5e1; font-size: 0.8rem; margin-top: 20px;">Nenhuma ação pendente</p>
-                                        </div>
-                                    </div>
-                                    <!-- Coluna 2: Alçada de Decisão -->
-                                    <div style="border: 1px solid #fee2e2; border-radius: 8px; overflow: hidden;">
-                                        <div style="background: #fff1f2; padding: 12px; border-bottom: 1px solid #fee2e2; text-align: center;">
-                                            <h4 style="margin:0; font-size: 0.9rem; color: var(--danger); text-transform: uppercase; letter-spacing: 0.5px;">Alçadas de Decisão</h4>
-                                            <p style="font-size: 0.7rem; color: #f43f5e; margin-top: 2px;">Diretoria / Investimento / Estrutura</p>
-                                        </div>
-                                        <div id="matrix-director-list" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 100px;">
-                                            <p style="text-align:center; color: #cbd5e1; font-size: 0.8rem; margin-top: 20px;">Nenhuma alçada pendente</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+
 
                             <div id="report-followup-container" class="hidden" style="border-top: 1px solid var(--border); padding-top: 24px; margin-top: 24px; margin-bottom: 24px;">
                                 <h3 style="margin-bottom: 16px; color: var(--primary);"><i class="ph ph-arrow-counter-clockwise"></i> Confronto de Auditorias (O que melhorou/piorou)</h3>
@@ -1139,10 +1114,37 @@ FOR ALL USING (true) WITH CHECK (true);</pre>
                             </div>
                         </div>
 
-                        <div class="glass" style="padding: 24px;">
+                        <div class="glass" style="padding: 24px; margin-bottom: 24px;">
                             <h3 style="margin-bottom: 16px; color: var(--danger);"><i class="ph ph-warning"></i> Pontos Críticos e Observações</h3>
                             <div id="report-critical-items" style="display:flex; flex-direction:column; gap:12px;">
                                 <!-- Lista de pontos a melhorar -->
+                            </div>
+                        </div>
+
+                        <!-- Matriz de Decisão (Resumo Final) -->
+                        <div class="glass report-no-break" style="padding: 20px; border-top: 3px solid var(--primary); margin-bottom: 24px; background: #fff;">
+                            <h3 style="margin-bottom: 20px; display:flex; align-items:center; gap:10px; color: var(--primary);"><i class="ph ph-grid-four"></i> Matriz de Decisão: Plano de Ação</h3>
+                            <div class="report-matrix-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                <!-- Coluna 1: Operacional -->
+                                <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                                    <div style="background: #f8fafc; padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+                                        <h4 style="margin:0; font-size: 0.9rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Ações Operacionais</h4>
+                                        <p style="font-size: 0.7rem; color: #94a3b8; margin-top: 2px;">Equipe de loja / Correção imediata</p>
+                                    </div>
+                                    <div id="matrix-operational-list" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 100px;">
+                                        <p style="text-align:center; color: #cbd5e1; font-size: 0.8rem; margin-top: 20px;">Nenhuma ação pendente</p>
+                                    </div>
+                                </div>
+                                <!-- Coluna 2: Alçada de Decisão -->
+                                <div style="border: 1px solid #fee2e2; border-radius: 8px; overflow: hidden;">
+                                    <div style="background: #fff1f2; padding: 12px; border-bottom: 1px solid #fee2e2; text-align: center;">
+                                        <h4 style="margin:0; font-size: 0.9rem; color: var(--danger); text-transform: uppercase; letter-spacing: 0.5px;">Alçadas de Decisão</h4>
+                                        <p style="font-size: 0.7rem; color: #f43f5e; margin-top: 2px;">Diretoria / Investimento / Estrutura</p>
+                                    </div>
+                                    <div id="matrix-director-list" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 100px;">
+                                        <p style="text-align:center; color: #cbd5e1; font-size: 0.8rem; margin-top: 20px;">Nenhuma alçada pendente</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
