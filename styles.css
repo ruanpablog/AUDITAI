@@ -773,7 +773,7 @@ label {
         background: #fff !important;
     }
 
-    .glass {
+    .glass, .report-no-break {
         background: #fff !important;
         border: 1px solid #cbd5e1 !important;
         padding: 30px !important;
@@ -782,9 +782,17 @@ label {
         display: block !important;
         width: 100% !important;
         box-sizing: border-box !important;
-        /* Remover o avoid global para evitar espaços em branco gigantes */
-        page-break-inside: auto !important;
-        break-inside: auto !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    img {
+        max-width: 100% !important;
+        max-height: 450px !important;
+        display: block !important;
+        margin: 10px auto !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
     }
     .badge {
         -webkit-print-color-adjust: exact !important;

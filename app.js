@@ -1810,7 +1810,7 @@ const _genChecksum = (str) => {
 
                     let photoHtml = '';
                     if (r.photos && r.photos.length > 0) {
-                        photoHtml = `<div style="margin-top: 16px; width: 100%; text-align: center;"><img src="${r.photos[0]}" style="max-width: 100%; max-height: 250px; page-break-inside: avoid;; object-fit: contain; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.05);"></div>`;
+                        photoHtml = `<div style="margin-top: 16px; width: 100%; text-align: center; break-inside: avoid;"><img src="${r.photos[0]}" style="max-width: 100%; max-height: 350px; break-inside: avoid; object-fit: contain; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.05);"></div>`;
                     }
 
                     deptDetailHtml += `
