@@ -14,5 +14,8 @@
     "management"
   ],
   "author": "Ruan Gomes",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^24.40.0"
+  }
 }

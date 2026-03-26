@@ -1765,14 +1765,14 @@ const _genChecksum = (str) => {
 
             // Detalhamento por Categoria e Itens
             let deptDetailHtml = `
-            <div class="report-department-block glass" style="margin-top: 24px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+            <div class="report-department-block glass" style="margin-top: 24px; border: 1px solid var(--border); border-radius: 8px; overflow: visible;">
                 <div style="background: var(--primary-dept-bg); padding: 12px 16px; border-bottom: 1px solid var(--border);">
                     <h4 style="margin: 0; color: var(--primary); display: flex; justify-content: space-between; align-items:center;">
                         <span><i class="ph ph-storefront"></i> ${dName}</span>
                         <span style="font-size: 1.2rem;">${d.percentage}%</span>
                     </h4>
                 </div>
-                <div style="padding: 16px; display: flex; flex-direction: column; gap: 20px;">
+                <div style="padding: 16px; display: block;">
             `;
 
             // Group responses by category
@@ -1785,9 +1785,9 @@ const _genChecksum = (str) => {
             for (const catId in catsMap) {
                 const cName = db.categories.find(x => x.id === catId)?.name || 'Categoria';
                 deptDetailHtml += `
-                    <div>
+                    <div style="margin-bottom: 24px;">
                         <h5 style="margin-bottom: 12px; padding-bottom: 4px; border-bottom: 1px solid #eee; color: #444; font-size: 1.05rem;">${cName}</h5>
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: block;">
                 `;
 
                 catsMap[catId].forEach(r => {
@@ -1814,7 +1814,7 @@ const _genChecksum = (str) => {
                     }
 
                     deptDetailHtml += `
-                        <div class="report-no-break" style="padding: 12px; background: #f9f9f9; border-radius: 6px; border-left: 4px solid ${borderLeftColor}; display:flex; flex-direction:column;">
+                        <div class="report-no-break" style="padding: 12px; background: #f9f9f9; border-radius: 6px; border-left: 4px solid ${borderLeftColor}; display:block; margin-bottom: 12px;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
                                 <p style="font-size: 0.95rem; font-weight: 500; color: #111; margin:0; flex:1;">${iObj ? iObj.question : "Questão"}</p>
                                  <span class="badge ${badgeClass}" style="flex-shrink: 0; display: flex; align-items: center; gap: 4px;">
@@ -1903,8 +1903,8 @@ const _genChecksum = (str) => {
                         ${evolutionLabel}
                     </div>
                     <p style="font-weight: 600; margin-bottom: 12px; padding-right: 100px; color: #1e293b;">${item ? item.question : 'Item'}</p>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid ${borderLeftBefore}; padding: 12px; border-radius: 8px;">
+                    <div style="display: block;">
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid ${borderLeftBefore}; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
                             <p style="font-size: 0.75rem; color: #475569; font-weight: 600; text-transform: uppercase; margin-bottom: 10px;">Antes (Audit. Anterior)</p>
                             <div style="display:flex; align-items:center; gap:8px;">
                                 <span class="badge ${parentResp.value === 'ruim' || parentResp.value === 'insuficiente' ? 'badge-danger' : 'badge-warning'}">${parentResp.value.toUpperCase()}</span>
