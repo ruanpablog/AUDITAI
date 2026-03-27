@@ -1313,7 +1313,7 @@ const _genChecksum = (str) => {
                         <button class="rating-btn ruim" data-val="ruim"><i class="ph ph-smiley-sad"></i> Ruim</button>
                          <button class="rating-btn insuficiente" data-val="insuficiente"><i class="ph ph-smiley-meh"></i> Insuficiente</button>
                          <button class="rating-btn bom" data-val="bom"><i class="ph ph-smiley"></i> Bom</button>
-                         <button class="rating-btn excelente" data-val="excelente"><i class="ph ph-smiley-star-eyes"></i> Excelente</button>
+                         <button class="rating-btn excelente" data-val="excelente"><i class="ph ph-smiley-wink"></i> Excelente</button>
                     </div>
                     
                     <div class="treaty-container hidden" style="margin-top: 12px; background: rgba(0,0,0,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
@@ -1672,7 +1672,7 @@ const _genChecksum = (str) => {
         let iconClass = 'ph-smiley';
         if(classification === 'Excelente') {
             cBadge.classList.add('badge-success');
-            iconClass = 'ph-smiley-star-eyes';
+            iconClass = 'ph-smiley-wink';
         } else if(classification === 'Bom') {
             cBadge.classList.add('badge-info');
             iconClass = 'ph-smiley';
@@ -1818,7 +1818,7 @@ const _genChecksum = (str) => {
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
                                 <p style="font-size: 0.95rem; font-weight: 500; color: #111; margin:0; flex:1;">${iObj ? iObj.question : "Questão"}</p>
                                  <span class="badge ${badgeClass}" style="flex-shrink: 0; display: flex; align-items: center; gap: 4px;">
-                                    <i class="ph ${r.value === 'ruim' ? 'ph-smiley-sad' : (r.value === 'insuficiente' ? 'ph-smiley-meh' : (r.value === 'bom' ? 'ph-smiley' : 'ph-smiley-star-eyes'))}"></i>
+                                    <i class="ph ${r.value === 'ruim' ? 'ph-smiley-sad' : (r.value === 'insuficiente' ? 'ph-smiley-meh' : (r.value === 'bom' ? 'ph-smiley' : 'ph-smiley-wink'))}"></i>
                                     ${valLabel}
                                 </span>
                             </div>
@@ -2407,7 +2407,7 @@ const _genChecksum = (str) => {
                 <td><strong>${storeName}</strong><br><small style="color:var(--text-muted);">${aud.type === 'padrao' ? 'Padrão' : 'Retornão'}</small></td>
                 <td>${aud.auditor || '-'}</td>
                 <td><span class="badge ${badgeClass}" style="display: inline-flex; align-items: center; gap: 4px;">
-                    <i class="ph ${aud.percentage >= 90 ? 'ph-smiley-star-eyes' : (aud.percentage >= 80 ? 'ph-smiley' : (aud.percentage >= 60 ? 'ph-smiley-meh' : 'ph-smiley-sad'))}"></i>
+                    <i class="ph ${aud.percentage >= 90 ? 'ph-smiley-wink' : (aud.percentage >= 80 ? 'ph-smiley' : (aud.percentage >= 60 ? 'ph-smiley-meh' : 'ph-smiley-sad'))}"></i>
                     ${aud.percentage}%
                 </span></td>
                 <td>${rating}</td>
