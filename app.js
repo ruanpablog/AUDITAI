@@ -2119,13 +2119,21 @@ const _genChecksum = (str) => {
 
         const tbody = document.getElementById('dash-ranking-table-body');
         if (tbody) {
-            tbody.innerHTML = sortedStores.map((s, i) => `
-                <tr>
-                    <td><span class="badge ${i < 3 ? 'badge-success' : 'badge-ghost'}">${i + 1}º</span></td>
-                    <td><strong>${s[0]}</strong></td>
-                    <td style="font-weight: 600; color: ${s[1].score >= 80 ? 'var(--success)' : (s[1].score >= 60 ? 'var(--warning)' : 'var(--danger)')}">${s[1].score}%</td>
-                </tr>
-            `).join('');
+            if (sortedStores.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum dado disponível.</td></tr>';
+            } else {
+                tbody.innerHTML = sortedStores.map((s, i) => {
+                    const storeObj = db.stores.find(x => x.name === s[0]);
+                    const manager = storeObj && storeObj.managerName ? `<br><small style="color:var(--text-muted); font-weight:400;">Gestor: ${storeObj.managerName}</small>` : '';
+                    return `
+                        <tr>
+                            <td><span class="badge ${i < 3 ? 'badge-success' : 'badge-ghost'}">${i + 1}º</span></td>
+                            <td><strong>${s[0]}</strong>${manager}</td>
+                            <td style="font-weight: 600; color: ${s[1].score >= 80 ? 'var(--success)' : (s[1].score >= 60 ? 'var(--warning)' : 'var(--danger)')}">${s[1].score}%</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
         }
     }
 
@@ -2178,20 +2186,27 @@ const _genChecksum = (str) => {
 
         evolutionData.sort((a, b) => b.evoRate - a.evoRate);
 
-        tbody.innerHTML = '';
-        evolutionData.forEach((item, idx) => {
-            const tr = document.createElement('tr');
-            const evoColor = item.evoRate > 0 ? 'var(--success)' : (item.evoRate < 0 ? 'var(--danger)' : 'var(--text-muted)');
-            const evoIcon = item.evoRate > 0 ? 'ph-trend-up' : (item.evoRate < 0 ? 'ph-trend-down' : 'ph-minus');
-            
-            tr.innerHTML = `
-                <td><span class="badge ${idx < 3 ? 'badge-accent' : 'badge-ghost'}">${idx + 1}º</span></td>
-                <td><div style="font-weight:600;">${item.name}</div></td>
-                <td>${item.currentScore}%</td>
-                <td><span style="color:${evoColor}; font-weight:700;"><i class="ph ${evoIcon}"></i> ${item.evoRate > 0 ? '+' : ''}${item.evoRate}%</span></td>
-            `;
-            tbody.appendChild(tr);
-        });
+        if (evolutionData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:24px; color:var(--text-muted);">Dados de comparação insuficientes entre os meses.</td></tr>';
+        } else {
+            tbody.innerHTML = '';
+            evolutionData.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                const evoColor = item.evoRate > 0 ? 'var(--success)' : (item.evoRate < 0 ? 'var(--danger)' : 'var(--text-muted)');
+                const evoIcon = item.evoRate > 0 ? 'ph-trend-up' : (item.evoRate < 0 ? 'ph-trend-down' : 'ph-minus');
+                
+                const storeObj = db.stores.find(x => x.name === item.name);
+                const manager = storeObj && storeObj.managerName ? `<br><small style="color:var(--text-muted); font-weight:400;">Gestor: ${storeObj.managerName}</small>` : '';
+
+                tr.innerHTML = `
+                    <td><span class="badge ${idx < 3 ? 'badge-accent' : 'badge-ghost'}">${idx + 1}º</span></td>
+                    <td><div style="font-weight:600;">${item.name}</div>${manager}</td>
+                    <td>${item.currentScore}%</td>
+                    <td><span style="color:${evoColor}; font-weight:700;"><i class="ph ${evoIcon}"></i> ${item.evoRate > 0 ? '+' : ''}${item.evoRate}%</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
 
         if (evolutionData.length > 0) {
             leaderDisplay.innerText = evolutionData[0].name;
