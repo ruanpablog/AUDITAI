@@ -27,6 +27,8 @@
 
     <!-- EmailJS SDK -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <!-- PDF.js para leitura de POPs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="styles.css">
@@ -191,6 +193,9 @@
                 <button class="nav-btn" data-target="scheduled-audits-view">
                     <i class="ph ph-calendar-check"></i> Agendamentos
                 </button>
+                <button class="nav-btn" data-target="pops-view" id="nav-pops">
+                    <i class="ph ph-file-text"></i> Rotinas do Setor
+                </button>
                 <button class="nav-btn admin-only hidden" data-target="admin-view" id="nav-admin">
                     <i class="ph ph-gear-six"></i> Painel Admin
                 </button>
@@ -217,6 +222,20 @@
                 <button class="btn-icon" id="btn-mobile-menu"><i class="ph ph-list"></i></button>
                 <span style="font-family: var(--font-heading); font-weight: 700; color: var(--primary);">AUDITAÍ</span>
                 <div style="width:32px;"></div><!-- Spacer -->
+            </div>
+            
+            <!-- PROCESSO DE POPS (Rotinas do Setor) -->
+            <div id="pops-view" class="page content-section hidden">
+                <div class="page-header">
+                    <div>
+                        <h2>Rotinas do Setor (POPs)</h2>
+                        <p>Acompanhe e execute os Procedimentos Operacionais Padrão</p>
+                    </div>
+                </div>
+                
+                <div class="card-grid" id="my-pops-grid">
+                    <!-- Populado via JS: Lista de POPs disponíveis para o usuário -->
+                </div>
             </div>
 
             <!-- ==============================
@@ -564,6 +583,7 @@
                     <button class="tab-btn" data-tab="admin-categories">Categorias</button>
                     <button class="tab-btn" data-tab="admin-checklist">Checklists</button>
                     <button class="tab-btn" data-tab="admin-users">Usuários</button>
+                    <button class="tab-btn" data-tab="admin-pops">Gestão de POPs</button>
                     <button class="tab-btn" data-tab="admin-settings"><i class="ph ph-gear-six"></i> Configurações</button>
                 </div>
 
@@ -933,7 +953,7 @@
                         </div>
                         <div id="admin-users" class="tab-content">
                             <div class="glass" style="padding: 20px;">
-                                <h3 style="font-size: 1.1rem; margin-bottom: 16px;">Aprovaço de Usuários</h3>
+                                <h3 style="font-size: 1.1rem; margin-bottom: 16px;">Aprovação de Usuários</h3>
                                 <table class="data-table">
                                     <thead>
                                         <tr>
@@ -946,6 +966,33 @@
                                     </thead>
                                     <tbody id="admin-users-body"></tbody>
                                 </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Admin Tab: Gestão de POPs -->
+                        <div id="admin-pops" class="tab-content">
+                            <div class="glass" style="padding: 24px; margin-bottom: 20px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                                    <h3 style="font-size:1.1rem;"><i class="ph ph-file-text"></i> Gestão de Procedimentos (POPs)</h3>
+                                    <button class="btn btn-primary" id="btn-open-ai-pop"><i class="ph ph-magic-wand"></i> Criar via IA</button>
+                                </div>
+                                <div id="admin-pops-list">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Nome do POP</th>
+                                                <th>Setor/Depto</th>
+                                                <th>Recorrência</th>
+                                                <th>Itens</th>
+                                                <th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-pops-table-body">
+                                            <!-- Populado via JS -->
+                                            <tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum POP cadastrado. Utilize o botão acima para criar via IA.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                         
@@ -1190,6 +1237,47 @@ FOR ALL USING (true) WITH CHECK (true);</pre>
     </div>
 
     <!-- App Logic -->
+    <!-- Modal: AI POP Generator -->
+    <div id="modal-ai-pop" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2><i class="ph ph-magic-wand"></i> Gerador de POP via IA</h2>
+                <button class="btn-icon" onclick="closeModal('modal-ai-pop')"><i class="ph ph-x"></i></button>
+            </div>
+            <div id="ai-step-upload">
+                <p style="margin-bottom: 20px; color: var(--text-muted);">Anexe o seu documento de POP (PDF ou Imagem) e a IA extrairá os itens de checklist automaticamente.</p>
+                <div class="glass" id="pop-drop-zone" style="border: 2px dashed var(--border); padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s;">
+                    <i class="ph ph-cloud-arrow-up" style="font-size: 3rem; color: var(--primary); margin-bottom: 16px;"></i>
+                    <p>Clique ou arraste seu arquivo aqui</p>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">(PDF, JPG ou PNG)</span>
+                    <input type="file" id="pop-file-input" accept=".pdf,image/*" style="display: none;">
+                </div>
+                <div id="pop-file-info" class="hidden" style="margin-top: 16px; padding: 12px; background: var(--glass-bg); border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+                    <span id="pop-filename" style="font-size: 0.85rem; font-weight: 500;"></span>
+                    <button class="btn-icon" onclick="resetPopUpload()"><i class="ph ph-trash" style="color: var(--danger);"></i></button>
+                </div>
+                <div class="modal-footer" style="margin-top: 24px;">
+                    <button class="btn btn-primary btn-full" id="btn-process-pop-ai" disabled>Enviar para Análise de IA <i class="ph ph-sparkle"></i></button>
+                </div>
+            </div>
+            <div id="ai-step-processing" class="hidden" style="text-align: center; padding: 40px 0;">
+                <div class="ph-spinner ph-spin" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></div>
+                <h3>Analisando Documento...</h3>
+                <p style="color: var(--text-muted); margin-top: 8px;">A IA está lendo o conteúdo e estruturando o seu checklist.</p>
+            </div>
+            <div id="ai-step-review" class="hidden">
+                <h3 style="margin-bottom: 16px;">Itens Extraídos</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Revise os itens abaixo e selecione os que deseja incluir no POP.</p>
+                <div id="ai-extracted-items" style="max-height: 300px; overflow-y: auto; padding-right: 8px;">
+                    <!-- Itens via JS -->
+                </div>
+                <div class="modal-footer" style="margin-top: 24px;">
+                    <button class="btn btn-primary btn-full" id="btn-confirm-ai-items">Gerar POP com Selecionados</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 

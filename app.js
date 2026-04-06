@@ -346,6 +346,7 @@ const _genChecksum = (str) => {
         checklistItems: defaultChecklistItems,
         audits: [],
         companies: [],
+        pops: [],
         config: { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' }
     };
 
@@ -408,6 +409,7 @@ const _genChecksum = (str) => {
             if (!db.categories) db.categories = defaultCategories;
             if (!db.checklistItems) db.checklistItems = defaultChecklistItems;
             if (!db.companies) db.companies = [];
+            if (!db.pops) db.pops = [];
             
             mergedAudits = [...db.audits];
         } 
@@ -426,6 +428,7 @@ const _genChecksum = (str) => {
                 checklistItems: defaultChecklistItems,
                 audits: [],
                 companies: [],
+                pops: [],
                 config: { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' }
             };
         }
@@ -794,8 +797,44 @@ const _genChecksum = (str) => {
             renderScheduledAudits();
         }
 
+        if (sectionId === 'pops-view') {
+            renderMyPOPs();
+        }
+
         if (window.innerWidth <= 900) closeSidebar();
     };
+
+    window.renderMyPOPs = function() {
+        const grid = document.getElementById('my-pops-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const pops = db.pops || [];
+        if (pops.length === 0) {
+            grid.innerHTML = '<div class="glass" style="grid-column: 1/-1; padding: 40px; text-align: center; color: var(--text-muted);"><i class="ph ph-mask-sad" style="font-size: 3rem; margin-bottom: 16px;"></i><p>Nenhuma rotina cadastrada para seu setor ainda.</p></div>';
+            return;
+        }
+
+        pops.forEach(pop => {
+            const card = document.createElement('div');
+            card.className = 'glass select-card';
+            card.style = "display: flex; flex-direction: column; text-align: left; padding: 20px; align-items: start;";
+            
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; width:100%; margin-bottom:12px;">
+                    <i class="ph ph-file-text" style="font-size: 2rem; color: var(--primary);"></i>
+                    <span class="badge badge-accent">${pop.recurrence}</span>
+                </div>
+                <h4 style="margin: 0 0 8px 0; font-size: 1.1rem;">${pop.name}</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); flex: 1; margin-bottom: 16px;">${pop.description}</p>
+                <div style="width: 100%; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; margin-top: auto;">
+                    <span style="font-size: 0.8rem; font-weight: 600;">${pop.items.length} Verificações</span>
+                    <button class="btn btn-primary btn-sm" onclick="window.startAuditFromPOP('${pop.id}')">Iniciar Agora <i class="ph ph-play"></i></button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
 
     navBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -849,6 +888,56 @@ const _genChecksum = (str) => {
     let selectedStoreId = null;
     let deptResponsibleName = '';
     
+    window.startAuditFromPOP = function(popId) {
+        const pop = db.pops.find(p => p.id === popId);
+        if (!pop) return;
+
+        // Resetar auditoria atual
+        currentAudit = {
+            id: 'aud_pop_' + Date.now(),
+            storeId: selectedStoreId || (db.stores.length > 0 ? db.stores[0].id : null),
+            date: new Date().toISOString(),
+            type: 'pop',
+            popId: pop.id,
+            popName: pop.name,
+            departments: []
+        };
+
+        if (!currentAudit.storeId) {
+            alert('Por favor, selecione uma loja no menu "Nova Auditoria" primeiro.');
+            switchSection('audit-flow');
+            return;
+        }
+
+        const dept = db.departments.find(d => d.id === pop.dept_id);
+        if (!dept) {
+            alert('Departamento vinculado ao POP não encontrado.');
+            return;
+        }
+
+        // Simular seleção de departamento
+        activeDeptId = dept.id;
+        deptResponsibleName = ""; // Gestor pode preencher depois
+
+        // Mudar para o fluxo de auditoria e pular passos
+        switchSection('audit-flow');
+        document.querySelectorAll('.audit-step').forEach(s => s.classList.add('hidden'));
+        document.getElementById('step-3').classList.remove('hidden');
+        
+        const store = db.stores.find(s => s.id === currentAudit.storeId);
+        document.getElementById('step-3-store-title').innerText = store ? store.name : 'Loja';
+        document.getElementById('step-3-dept-title').innerText = dept.name;
+
+        // Limpar respostas anteriores no questionnaire
+        if (typeof renderQuestions === 'function') {
+            // Filtrar apenas os itens que pertencem ao POP
+            const popItems = db.checklistItems.filter(item => pop.items.includes(item.id));
+            renderQuestions(popItems);
+        }
+        
+        updateProgressBar(0.75);
+    };
+
     // --- Step 1: Select Store ---
     function populateStores() {
         const grid = document.getElementById('stores-grid');
@@ -2662,6 +2751,179 @@ const _genChecksum = (str) => {
     document.getElementById('nav-admin').addEventListener('click', () => {
         renderAdminUsers();
         renderAdminStores();
+        renderAdminPOPs();
+    });
+
+    // POP Management Logic
+    window.renderAdminPOPs = function () {
+        const tbody = document.getElementById('admin-pops-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        
+        const pops = db.pops || [];
+        if (pops.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum POP cadastrado. Utilize o botão acima para criar via IA.</td></tr>';
+            return;
+        }
+
+        pops.forEach(pop => {
+            const dept = db.departments.find(d => d.id === pop.dept_id);
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${pop.name}</strong></td>
+                <td>${dept ? dept.name : 'N/A'}</td>
+                <td><span class="badge badge-ghost">${pop.recurrence}</span></td>
+                <td>${pop.items.length} itens</td>
+                <td>
+                    <button class="btn btn-ghost btn-sm" onclick="window.deletePOP('${pop.id}')"><i class="ph ph-trash" style="color:var(--danger);"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    };
+
+    window.deletePOP = function(id) {
+        if (!confirm('Tem certeza que deseja excluir este POP?')) return;
+        db.pops = db.pops.filter(p => p.id !== id);
+        saveDB();
+        renderAdminPOPs();
+    };
+
+    const btnOpenAiPop = document.getElementById('btn-open-ai-pop');
+    if (btnOpenAiPop) {
+        btnOpenAiPop.addEventListener('click', () => {
+            openModal('modal-ai-pop');
+            resetPopUpload();
+        });
+    }
+
+    // Modal Helper
+    window.openModal = function(id) {
+        document.getElementById(id).classList.add('active');
+    }
+    window.closeModal = function(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    // AI POP Generator FLOW
+    const popFileInput = document.getElementById('pop-file-input');
+    const popDropZone = document.getElementById('pop-drop-zone');
+    const btnProcessPopAi = document.getElementById('btn-process-pop-ai');
+    let selectedPopFile = null;
+
+    window.resetPopUpload = function() {
+        selectedPopFile = null;
+        if(popFileInput) popFileInput.value = '';
+        document.getElementById('ai-step-upload').classList.remove('hidden');
+        document.getElementById('ai-step-processing').classList.add('hidden');
+        document.getElementById('ai-step-review').classList.add('hidden');
+        document.getElementById('pop-file-info').classList.add('hidden');
+        btnProcessPopAi.disabled = true;
+    };
+
+    if (popDropZone) {
+        popDropZone.addEventListener('click', () => popFileInput.click());
+        popDropZone.addEventListener('dragover', (e) => { e.preventDefault(); popDropZone.style.borderColor = 'var(--primary)'; });
+        popDropZone.addEventListener('dragleave', () => { popDropZone.style.borderColor = 'var(--border)'; });
+        popDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            popDropZone.style.borderColor = 'var(--border)';
+            if (e.dataTransfer.files.length) handlePopFile(e.dataTransfer.files[0]);
+        });
+    }
+
+    if (popFileInput) {
+        popFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handlePopFile(e.target.files[0]);
+        });
+    }
+
+    function handlePopFile(file) {
+        selectedPopFile = file;
+        document.getElementById('pop-filename').innerText = file.name;
+        document.getElementById('pop-file-info').classList.remove('hidden');
+        btnProcessPopAi.disabled = false;
+    }
+
+    if (btnProcessPopAi) {
+        btnProcessPopAi.addEventListener('click', async () => {
+            document.getElementById('ai-step-upload').classList.add('hidden');
+            document.getElementById('ai-step-processing').classList.remove('hidden');
+
+            // Simulação de processamento de IA (3 segundos)
+            setTimeout(() => {
+                const mockItems = [
+                    "Verificar temperatura do balcão (deve estar entre 0°C e 5°C).",
+                    "Limpar área de manipulação com álcool 70%.",
+                    "Garantir uso de EPIs completos (touca, luvas, avental).",
+                    "Verificar data de validade dos produtos expostos.",
+                    "Higienizar utensílios de corte ao final do turno."
+                ];
+                
+                renderAiReview(mockItems);
+            }, 3000);
+        });
+    }
+
+    function renderAiReview(items) {
+        document.getElementById('ai-step-processing').classList.add('hidden');
+        document.getElementById('ai-step-review').classList.remove('hidden');
+        const container = document.getElementById('ai-extracted-items');
+        container.innerHTML = '';
+        
+        items.forEach((text, i) => {
+            const div = document.createElement('div');
+            div.style = "display:flex; gap:10px; align-items:start; padding:10px; background:var(--glass-bg); border-radius:8px; margin-bottom:8px;";
+            div.innerHTML = `
+                <input type="checkbox" checked id="item-ai-${i}" style="width:18px; height:18px; margin-top:2px;">
+                <label for="item-ai-${i}" style="font-size:0.9rem; flex:1; cursor:pointer;">${text}</label>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    document.getElementById('btn-confirm-ai-items').addEventListener('click', () => {
+        const selectedItems = [];
+        document.querySelectorAll('#ai-extracted-items input:checked').forEach(input => {
+            selectedItems.push(input.nextElementSibling.innerText);
+        });
+
+        if (selectedItems.length === 0) {
+            alert('Selecione pelo menos um item.');
+            return;
+        }
+
+        // Criar o POP
+        const popId = 'pop_' + Date.now();
+        const newPop = {
+            id: popId,
+            name: selectedPopFile ? selectedPopFile.name.split('.')[0] : "Novo POP via IA",
+            description: "Gerado automaticamente via leitura de documento.",
+            dept_id: db.departments[0].id, // Default para o primeiro depto
+            recurrence: 'daily',
+            items: [],
+            ai_status: 'processed'
+        };
+
+        // Salvar itens no banco global e vincular ao POP
+        selectedItems.forEach((text, i) => {
+            const itemId = 'i_ai_' + Date.now() + '_' + i;
+            db.checklistItems.push({
+                id: itemId,
+                dept_id: newPop.dept_id,
+                question: text,
+                eh_critico: false,
+                status: "Ativo",
+                order: i + 1
+            });
+            newPop.items.push(itemId);
+        });
+
+        db.pops.push(newPop);
+        saveDB();
+        renderAdminPOPs();
+        closeModal('modal-ai-pop');
+        alert('POP criado com sucesso com ' + selectedItems.length + ' itens!');
     });
 
     // Admin Tabs Logic
