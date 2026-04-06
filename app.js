@@ -1,6 +1,8 @@
 // ==========================================
 // APP INITIALIZATION & UTILS
 // ==========================================
+const scoreValues = { 'excelente': 100, 'bom': 80, 'regular': 60, 'ruim': 30, 'insuficiente': 0 };
+
 document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Funções de Ofuscação e Integridade ---
@@ -1301,7 +1303,7 @@ const _genChecksum = (str) => {
         // Calcular Percentual do Departamento
         // Regra: Média simples dos itens respondidos (ou peso por categoria se houver)
         let totalScore = 0;
-        const scoreValues = { 'excelente': 100, 'bom': 80, 'regular': 60, 'ruim': 30, 'insuficiente': 0 };
+        
         
         currentAudit.tempResponses.forEach(r => {
             totalScore += scoreValues[r.value] || 0;
@@ -1336,41 +1338,25 @@ const _genChecksum = (str) => {
     });
 
     // --- Step 3: Evaluate Categories & Items ---
-    function populateCategoriesAndItems(categoryId) {
+    function renderQuestions(items, title) {
         const container = document.getElementById('categories-container');
         container.innerHTML = '';
-
-        // Filter only items belonging to the active department AND selected category
-        let items = db.checklistItems.filter(i => i.dept_id === activeDeptId && i.cat_id === categoryId);
-
-        // Se for retorno, filtrar apenas itens reprovados na auditoria pai
-        if (activeAuditType === 'retorno' && parentAuditId) {
-            const parentAudit = db.audits.find(a => a.id === parentAuditId);
-            const parentDept = parentAudit.departments.find(pd => pd.deptId === activeDeptId);
-            
-            items = items.filter(i => {
-                const response = parentDept.responses.find(r => r.itemId === i.id);
-                return response && (response.value === 'ruim' || response.value === 'insuficiente');
-            });
-        }
 
         if (items.length === 0) {
             container.innerHTML = `
                 <div class="glass" style="padding:32px; text-align:center;">
                     <i class="ph ph-mask-sad" style="font-size:2.5rem; color:var(--text-muted);"></i>
-                    <p style="margin-top:12px; color:var(--text-muted);">Nenhum item cadastrado para esta categoria.</p>
+                    <p style="margin-top:12px; color:var(--text-muted);">Nenhum item cadastrado para esta avaliação.</p>
                 </div>`;
             return;
         }
 
-        const cat = db.categories.find(c => c.id === categoryId);
-        
         const sec = document.createElement('div');
         sec.className = 'glass';
         sec.style.padding = '20px';
         sec.style.marginBottom = '20px';
         
-        let html = `<h4 style="margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">${cat ? cat.name : 'Avaliação'}</h4>`;
+        let html = `<h4 style="margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">${title}</h4>`;
         
         items.forEach(item => {
             const criticoBadge = item.eh_critico ? '<span class="badge badge-danger">CRÍTICO</span>' : '';
@@ -1429,8 +1415,7 @@ const _genChecksum = (str) => {
         sec.innerHTML = html;
         container.appendChild(sec);
 
-
-        // Add event listeners to rating buttons
+        // Add event listeners to newly rendered items
         document.querySelectorAll('.audit-item').forEach(itemEl => {
             const btns = itemEl.querySelectorAll('.rating-btn');
             const obsEl = itemEl.querySelector('.item-obs');
@@ -1439,13 +1424,9 @@ const _genChecksum = (str) => {
             const btnAddPhoto = itemEl.querySelector('.btn-add-photo');
             const fileInput = itemEl.querySelector('.hidden-photo-input');
             const previewContainer = itemEl.querySelector('.photo-preview-container');
-            const isCritico = itemEl.dataset.critical === "true";
 
             if(btnAddPhoto && fileInput) {
-                btnAddPhoto.addEventListener('click', () => {
-                    fileInput.click();
-                });
-
+                btnAddPhoto.addEventListener('click', () => fileInput.click());
                 fileInput.addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if(!file) return;
@@ -1453,14 +1434,11 @@ const _genChecksum = (str) => {
                     if (typeof supabase !== 'undefined') {
                         btnAddPhoto.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Enviando...';
                         btnAddPhoto.disabled = true;
-
                         const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-                        
                         supabase.storage.from('audit_photos').upload(fileName, file)
                             .then(({ data, error }) => {
                                 if (error) {
-                                    console.error('Supabase Storage Error:', error);
-                                    alert('Erro ao enviar foto para nuvem: ' + error.message);
+                                    alert('Erro ao enviar foto: ' + error.message);
                                     btnAddPhoto.innerHTML = '<i class="ph ph-camera"></i> Adicionar Foto';
                                 } else {
                                     const { data: publicUrlData } = supabase.storage.from('audit_photos').getPublicUrl(fileName);
@@ -1470,18 +1448,10 @@ const _genChecksum = (str) => {
                                         previewContainer.innerHTML = `<img src="${url}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
                                         previewContainer.style.display = 'block';
                                         btnAddPhoto.innerHTML = '<i class="ph ph-camera-rotate"></i> Trocar Foto';
-                                        saveDB();
                                     }
                                 }
                             })
-                            .catch(err => {
-                                alert("Falha ao comunicar com armazenamento da nuvem.");
-                                btnAddPhoto.innerHTML = '<i class="ph ph-camera"></i> Adicionar Foto';
-                                console.error(err);
-                            })
-                            .finally(() => {
-                                btnAddPhoto.disabled = false;
-                            });
+                            .finally(() => btnAddPhoto.disabled = false);
                     } else {
                         const reader = new FileReader();
                         reader.onload = (ev) => {
@@ -1500,9 +1470,7 @@ const _genChecksum = (str) => {
                 b.addEventListener('click', () => {
                     btns.forEach(x => x.classList.remove('active'));
                     b.classList.add('active');
-                    
                     const isBad = b.dataset.val === 'ruim' || b.dataset.val === 'insuficiente';
-                    
                     if(isBad) {
                         obsEl.classList.remove('hidden');
                         treatyContainer.classList.remove('hidden');
@@ -1517,10 +1485,35 @@ const _genChecksum = (str) => {
         });
     }
 
+    window.renderQuestions = renderQuestions;
+
+    function populateCategoriesAndItems(categoryId) {
+        // Filter only items belonging to the active department AND selected category
+        let items = db.checklistItems.filter(i => i.dept_id === activeDeptId && i.cat_id === categoryId);
+
+        // Se for retorno, filtrar apenas itens reprovados na auditoria pai
+        if (activeAuditType === 'retorno' && parentAuditId) {
+            const parentAudit = db.audits.find(a => a.id === parentAuditId);
+            const parentDept = parentAudit.departments.find(pd => pd.deptId === activeDeptId);
+            
+            items = items.filter(i => {
+                const response = parentDept.responses.find(r => r.itemId === i.id);
+                return response && (response.value === 'ruim' || response.value === 'insuficiente');
+            });
+        }
+
+        const cat = db.categories.find(c => c.id === categoryId);
+        renderQuestions(items, cat ? cat.name : 'Avaliação');
+    }
+
     document.getElementById('btn-prev-step-3').addEventListener('click', () => {
         document.getElementById('step-3').classList.add('hidden');
-        document.getElementById('step-cat-selection').classList.remove('hidden');
-        updateProgressBar(1.5);
+        if (currentAudit.type === 'pop') {
+            switchSection('pops-view');
+        } else {
+            document.getElementById('step-cat-selection').classList.remove('hidden');
+            updateProgressBar(1.5);
+        }
     });
 
     document.getElementById('btn-save-dept').addEventListener('click', () => {
@@ -1545,18 +1538,20 @@ const _genChecksum = (str) => {
             const isBad = val === 'ruim' || val === 'insuficiente';
 
             if(isBad && !obs) {
-                 errors.push(`Justifique o item: ${itemEl.querySelector('.audit-question').innerText.split(' CRÍTICO')[0]}`);
+                 const qText = itemEl.querySelector('.audit-question').innerText.split(' CRÍTICO')[0];
+                 errors.push(`Justifique o item: ${qText}`);
             }
             if(isBad && !treaty) {
                  errors.push(`Selecione a tratativa para o item com nota baixa.`);
             }
             if(isBad && !photo64) {
-                 errors.push(`A foto é obrigatória para o item "${questionText}" por ter nota baixa.`);
+                 const qText = itemEl.querySelector('.audit-question').innerText.split(' CRÍTICO')[0];
+                 errors.push(`A foto é obrigatória para o item "${qText}" por ter nota baixa.`);
             }
 
             catResponses.push({
                 itemId: itemEl.dataset.item,
-                catId: activeCategoryId,
+                catId: typeof activeCategoryId !== 'undefined' ? activeCategoryId : null,
                 value: val,
                 observations: obs,
                 status_tratativa: treaty,
@@ -1566,7 +1561,7 @@ const _genChecksum = (str) => {
         });
 
         if(!allAnswered) {
-            alert('Por favor, responda todos os itens da categoria!');
+            alert('Por favor, responda todos os itens!');
             return;
         }
 
@@ -1577,6 +1572,25 @@ const _genChecksum = (str) => {
 
         // Store responses temporarily in currentAudit
         if (!currentAudit.tempResponses) currentAudit.tempResponses = [];
+        
+        if (currentAudit.type === 'pop') {
+            // Se for POP, finalizar o depto e ir para conclusão
+            const totalScore = catResponses.reduce((sum, r) => sum + (scoreValues[r.value] || 0), 0);
+            const deptPercentage = Math.round(totalScore / catResponses.length);
+            
+            currentAudit.departments = [{
+                deptId: activeDeptId,
+                responsible: respName,
+                percentage: deptPercentage,
+                responses: [...catResponses]
+            }];
+            
+            document.getElementById('step-3').classList.add('hidden');
+            document.getElementById('btn-finish-audit').classList.remove('hidden');
+            saveAuditFinal();
+            return;
+        }
+
         // Remove old responses for this category if any
         currentAudit.tempResponses = currentAudit.tempResponses.filter(r => r.catId !== activeCategoryId);
         currentAudit.tempResponses.push(...catResponses);
@@ -2789,11 +2803,26 @@ const _genChecksum = (str) => {
         renderAdminPOPs();
     };
 
+    // AI POP Generator FLOW
+    const popFileInput = document.getElementById('pop-file-input');
+    const popDropZone = document.getElementById('pop-drop-zone');
+    const btnProcessPopAi = document.getElementById('btn-process-pop-ai');
+    let selectedPopFile = null;
+
     const btnOpenAiPop = document.getElementById('btn-open-ai-pop');
     if (btnOpenAiPop) {
         btnOpenAiPop.addEventListener('click', () => {
             openModal('modal-ai-pop');
             resetPopUpload();
+        });
+    }
+
+    const btnDirectImport = document.getElementById('btn-direct-import-pop');
+    if (btnDirectImport) {
+        btnDirectImport.addEventListener('click', () => {
+            openModal('modal-ai-pop');
+            resetPopUpload();
+            if (popFileInput) popFileInput.click();
         });
     }
 
@@ -2804,12 +2833,6 @@ const _genChecksum = (str) => {
     window.closeModal = function(id) {
         document.getElementById(id).classList.remove('active');
     }
-
-    // AI POP Generator FLOW
-    const popFileInput = document.getElementById('pop-file-input');
-    const popDropZone = document.getElementById('pop-drop-zone');
-    const btnProcessPopAi = document.getElementById('btn-process-pop-ai');
-    let selectedPopFile = null;
 
     window.resetPopUpload = function() {
         selectedPopFile = null;
