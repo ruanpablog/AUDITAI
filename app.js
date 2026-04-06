@@ -2802,27 +2802,37 @@ const _genChecksum = (str) => {
         renderAdminPOPs();
     };
 
-    const btnOpenAiPop = document.getElementById('btn-open-ai-pop');
-    if (btnOpenAiPop) {
-        btnOpenAiPop.addEventListener('click', () => {
+    // Modal Helper
+    window.openModal = function(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('active');
+    }
+    window.closeModal = function(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('active');
+    }
+
+    // AI POP Generator FLOW
+    let selectedPopFile = null;
+
+    const btnOpenAI = document.getElementById('btn-open-ai-pop');
+    const btnDirectImport = document.getElementById('btn-direct-import-pop');
+
+    if (btnOpenAI) {
+        btnOpenAI.addEventListener('click', () => {
             openModal('modal-ai-pop');
             resetPopUpload();
         });
     }
 
-    // Modal Helper
-    window.openModal = function(id) {
-        document.getElementById(id).classList.add('active');
+    if (btnDirectImport) {
+        btnDirectImport.addEventListener('click', () => {
+            openModal('modal-ai-pop');
+            resetPopUpload();
+            const input = document.getElementById('pop-file-input');
+            if (input) input.click();
+        });
     }
-    window.closeModal = function(id) {
-        document.getElementById(id).classList.remove('active');
-    }
-
-    // AI POP Generator FLOW
-    const popFileInput = document.getElementById('pop-file-input');
-    const popDropZone = document.getElementById('pop-drop-zone');
-    const btnProcessPopAi = document.getElementById('btn-process-pop-ai');
-    let selectedPopFile = null;
 
     window.resetPopUpload = function() {
         selectedPopFile = null;
