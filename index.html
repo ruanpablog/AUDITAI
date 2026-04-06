@@ -1012,10 +1012,16 @@
                                         <option value="admin">Administrador</option>
                                     </select>
                                 </div>
-                                <div class="form-group" style="margin-bottom: 24px;">
+                                <div class="form-group">
                                     <label>Vincular a Empresa</label>
                                     <select id="approve-company">
                                         <option value="">Sem empresa</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 24px;">
+                                    <label>Departamento (Setores POP)</label>
+                                    <select id="approve-dept">
+                                        <option value="">Sem departamento fixo</option>
                                     </select>
                                 </div>
                                 <div style="display:flex; justify-content:flex-end; gap:12px;">
@@ -1270,13 +1276,67 @@ FOR ALL USING (true) WITH CHECK (true);</pre>
             </div>
             <div id="ai-step-review" class="hidden">
                 <h3 style="margin-bottom: 16px;">Itens Extraídos</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Revise os itens abaixo e selecione os que deseja incluir no POP.</p>
-                <div id="ai-extracted-items" style="max-height: 300px; overflow-y: auto; padding-right: 8px;">
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>Vincular ao Setor / Departamento</label>
+                    <select id="ai-pop-dept">
+                        <!-- Polulado via JS -->
+                    </select>
+                </div>
+
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Revise os itens abaixo e selecione os que deseja incluir no POP.</p>
+                <div id="ai-extracted-items" style="max-height: 250px; overflow-y: auto; padding-right: 8px; margin-bottom: 16px;">
                     <!-- Itens via JS -->
                 </div>
-                <div class="modal-footer" style="margin-top: 24px;">
+                <div class="modal-footer" style="padding-top: 16px;">
                     <button class="btn btn-primary btn-full" id="btn-confirm-ai-items">Gerar POP com Selecionados</button>
                 </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal: Edit POP -->
+    <div id="modal-edit-pop" class="modal">
+        <div class="modal-content" style="max-width: 700px; width: 90%;">
+            <div class="modal-header">
+                <h2><i class="ph ph-note-pencil"></i> Editar POP</h2>
+                <button class="btn-icon" onclick="closeModal('modal-edit-pop')"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-pop-id">
+                <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label>Nome do Procedimento</label>
+                        <input type="text" id="edit-pop-name" placeholder="Ex: Higienização de Bancada">
+                    </div>
+                    <div class="form-group">
+                        <label>Setor Responsável</label>
+                        <select id="edit-pop-dept">
+                            <!-- Polulado via JS -->
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Periodicidade</label>
+                    <select id="edit-pop-recurrence">
+                        <option value="daily">Diário</option>
+                        <option value="weekly">Semanal</option>
+                        <option value="monthly">Mensal</option>
+                    </select>
+                </div>
+                
+                <div style="margin-top: 24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <h4 style="margin:0;">Itens do Checklist</h4>
+                        <button class="btn btn-sm btn-outline" id="btn-add-edit-item"><i class="ph ph-plus"></i> Novo Item</button>
+                    </div>
+                    <div id="edit-pop-items-list" style="max-height: 250px; overflow-y: auto; padding-right: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.1);">
+                        <!-- Itens via JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 24px; display: flex; gap: 12px;">
+                <button class="btn btn-outline" style="flex:1;" onclick="closeModal('modal-edit-pop')">Cancelar</button>
+                <button class="btn btn-primary" style="flex:1;" id="btn-save-pop-changes">Salvar Alterações</button>
             </div>
         </div>
     </div>

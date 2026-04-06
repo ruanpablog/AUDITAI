@@ -811,13 +811,22 @@ const _genChecksum = (str) => {
         if (!grid) return;
         grid.innerHTML = '';
 
-        const pops = db.pops || [];
+        let pops = db.pops || [];
+        
+        // Filtragem por departamento do usuário
+        if (currentUser && currentUser.role !== 'admin' && currentUser.deptId) {
+            pops = pops.filter(p => p.dept_id === currentUser.deptId);
+        }
+
         if (pops.length === 0) {
             grid.innerHTML = '<div class="glass" style="grid-column: 1/-1; padding: 40px; text-align: center; color: var(--text-muted);"><i class="ph ph-mask-sad" style="font-size: 3rem; margin-bottom: 16px;"></i><p>Nenhuma rotina cadastrada para seu setor ainda.</p></div>';
             return;
         }
 
         pops.forEach(pop => {
+            const dept = db.departments.find(d => d.id === pop.dept_id);
+            const deptName = dept ? dept.name : 'Geral';
+            
             const card = document.createElement('div');
             card.className = 'glass select-card';
             card.style = "display: flex; flex-direction: column; text-align: left; padding: 20px; align-items: start;";
@@ -825,10 +834,13 @@ const _genChecksum = (str) => {
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; width:100%; margin-bottom:12px;">
                     <i class="ph ph-file-text" style="font-size: 2rem; color: var(--primary);"></i>
-                    <span class="badge badge-accent">${pop.recurrence}</span>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                        <span class="badge badge-accent">${pop.recurrence}</span>
+                        <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">${deptName}</span>
+                    </div>
                 </div>
                 <h4 style="margin: 0 0 8px 0; font-size: 1.1rem;">${pop.name}</h4>
-                <p style="font-size: 0.85rem; color: var(--text-muted); flex: 1; margin-bottom: 16px;">${pop.description}</p>
+                <p style="font-size: 0.85rem; color: var(--text-muted); flex: 1; margin-bottom: 16px;">${pop.description || 'Procedimento operacional padrão.'}</p>
                 <div style="width: 100%; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; margin-top: auto;">
                     <span style="font-size: 0.8rem; font-weight: 600;">${pop.items.length} Verificações</span>
                     <button class="btn btn-primary btn-sm" onclick="window.startAuditFromPOP('${pop.id}')">Iniciar Agora <i class="ph ph-play"></i></button>
@@ -2618,6 +2630,19 @@ const _genChecksum = (str) => {
                 selectCompany.appendChild(opt);
             });
         }
+
+        // Popular departamentos para vinculo POP
+        const approveDept = document.getElementById('approve-dept');
+        if (approveDept) {
+            approveDept.innerHTML = '<option value="">Sem departamento fixo</option>';
+            db.departments.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.name;
+                approveDept.appendChild(opt);
+            });
+        }
+
         modalApprove.classList.remove('hidden');
     };
 
@@ -2634,6 +2659,7 @@ const _genChecksum = (str) => {
             const userId = document.getElementById('approve-user-id').value;
             const role = document.getElementById('approve-role').value;
             const compId = document.getElementById('approve-company').value;
+            const deptId = document.getElementById('approve-dept').value;
 
             const u = db.users.find(x => x.id === userId);
             if(u) {
@@ -2780,6 +2806,9 @@ const _genChecksum = (str) => {
             return;
         }
 
+        // Preencher selects de departamento (IA e Edit)
+        renderDeptSelects();
+
         pops.forEach(pop => {
             const dept = db.departments.find(d => d.id === pop.dept_id);
             const tr = document.createElement('tr');
@@ -2789,12 +2818,123 @@ const _genChecksum = (str) => {
                 <td><span class="badge badge-ghost">${pop.recurrence}</span></td>
                 <td>${pop.items.length} itens</td>
                 <td>
-                    <button class="btn btn-ghost btn-sm" onclick="window.deletePOP('${pop.id}')"><i class="ph ph-trash" style="color:var(--danger);"></i></button>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-ghost btn-sm" onclick="window.editPOP('${pop.id}')"><i class="ph ph-pencil-simple" style="color:var(--primary);"></i></button>
+                        <button class="btn btn-ghost btn-sm" onclick="window.deletePOP('${pop.id}')"><i class="ph ph-trash" style="color:var(--danger);"></i></button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
         });
     };
+
+    function renderDeptSelects() {
+        const selects = ['ai-pop-dept', 'edit-pop-dept'];
+        selects.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.innerHTML = db.departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+            }
+        });
+    }
+
+    window.editPOP = function(id) {
+        const pop = db.pops.find(p => p.id === id);
+        if(!pop) return;
+
+        document.getElementById('edit-pop-id').value = pop.id;
+        document.getElementById('edit-pop-name').value = pop.name;
+        document.getElementById('edit-pop-dept').value = pop.dept_id;
+        document.getElementById('edit-pop-recurrence').value = pop.recurrence || 'daily';
+
+        renderEditPopItems(pop.items);
+        openModal('modal-edit-pop');
+    };
+
+    function renderEditPopItems(itemIds) {
+        const container = document.getElementById('edit-pop-items-list');
+        container.innerHTML = '';
+        
+        itemIds.forEach(itemId => {
+            const item = db.checklistItems.find(i => i.id === itemId);
+            if(item) {
+                addEditPopItemRow(item.question, item.id);
+            }
+        });
+    }
+
+    function addEditPopItemRow(text = '', id = '') {
+        const container = document.getElementById('edit-pop-items-list');
+        const div = document.createElement('div');
+        div.className = 'edit-pop-item-row';
+        div.style = "display:flex; gap:10px; margin-bottom:8px; align-items:center;";
+        div.innerHTML = `
+            <input type="text" class="edit-item-text" value="${text}" style="flex:1; padding:8px; font-size:0.85rem;" placeholder="Descrição do item...">
+            <input type="hidden" class="edit-item-id" value="${id}">
+            <button class="btn-icon" onclick="this.parentElement.remove()"><i class="ph ph-x" style="color:var(--danger);"></i></button>
+        `;
+        container.appendChild(div);
+    }
+
+    const btnAddEditItem = document.getElementById('btn-add-edit-item');
+    if(btnAddEditItem) {
+        btnAddEditItem.addEventListener('click', () => addEditPopItemRow());
+    }
+
+    const btnSavePopChanges = document.getElementById('btn-save-pop-changes');
+    if(btnSavePopChanges) {
+        btnSavePopChanges.addEventListener('click', () => {
+            const id = document.getElementById('edit-pop-id').value;
+            const popIndex = db.pops.findIndex(p => p.id === id);
+            if(popIndex === -1) return;
+
+            const name = document.getElementById('edit-pop-name').value;
+            const deptId = document.getElementById('edit-pop-dept').value;
+            const recurrence = document.getElementById('edit-pop-recurrence').value;
+
+            const itemRows = document.querySelectorAll('.edit-pop-item-row');
+            const newItemIds = [];
+
+            itemRows.forEach((row, index) => {
+                const text = row.querySelector('.edit-item-text').value;
+                let itemId = row.querySelector('.edit-item-id').value;
+
+                if(!text.trim()) return;
+
+                if(itemId) {
+                    // Atualizar item existente
+                    const item = db.checklistItems.find(i => i.id === itemId);
+                    if(item) {
+                        item.question = text;
+                        item.dept_id = deptId;
+                        item.order = index + 1;
+                    }
+                } else {
+                    // Criar novo item
+                    itemId = 'i_edit_' + Date.now() + '_' + index;
+                    db.checklistItems.push({
+                        id: itemId,
+                        dept_id: deptId,
+                        question: text,
+                        eh_critico: false,
+                        status: "Ativo",
+                        order: index + 1
+                    });
+                }
+                newItemIds.push(itemId);
+            });
+
+            db.pops[popIndex].name = name;
+            db.pops[popIndex].dept_id = deptId;
+            db.pops[popIndex].recurrence = recurrence;
+            db.pops[popIndex].items = newItemIds;
+
+            saveDB();
+            renderAdminPOPs();
+            closeModal('modal-edit-pop');
+            alert('POP atualizado com sucesso!');
+        });
+    }
 
     window.deletePOP = function(id) {
         if (!confirm('Tem certeza que deseja excluir este POP?')) return;
@@ -2918,11 +3058,13 @@ const _genChecksum = (str) => {
 
         // Criar o POP
         const popId = 'pop_' + Date.now();
+        const deptId = document.getElementById('ai-pop-dept').value || db.departments[0].id;
+        
         const newPop = {
             id: popId,
             name: selectedPopFile ? selectedPopFile.name.split('.')[0] : "Novo POP via IA",
             description: "Gerado automaticamente via leitura de documento.",
-            dept_id: db.departments[0].id, // Default para o primeiro depto
+            dept_id: deptId,
             recurrence: 'daily',
             items: [],
             ai_status: 'processed'
@@ -2933,7 +3075,7 @@ const _genChecksum = (str) => {
             const itemId = 'i_ai_' + Date.now() + '_' + i;
             db.checklistItems.push({
                 id: itemId,
-                dept_id: newPop.dept_id,
+                dept_id: deptId,
                 question: text,
                 eh_critico: false,
                 status: "Ativo",
