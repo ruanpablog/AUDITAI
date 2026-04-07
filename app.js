@@ -472,13 +472,16 @@ const _genChecksum = (str) => {
         db.audits = db.audits.filter(a => a && a.id && a.date);
         if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' };
 
-        // Injeção de Alçada de Decisão (Novo Campo)
+        // Injeção de Alçada de Decisão e Fluxo (Novo Campo)
         if (db.checklistItems) {
             db.checklistItems.forEach(item => {
                 if (item.eh_alcada === undefined) {
                     // Itens específicos que são Alçada de Diretoria (Investimento/Estrutura)
                     const alcadaIds = ['i110', 'i6', 'i97', 'i41', 'i126']; 
                     item.eh_alcada = alcadaIds.includes(item.id);
+                }
+                if (!item.fluxo) {
+                    item.fluxo = 'auditoria'; // Padrão para itens legados
                 }
             });
         }
@@ -815,18 +818,69 @@ const _genChecksum = (str) => {
         if (!grid) return;
         grid.innerHTML = '';
 
+        // 1. Mostrar POPs Legados (se houver)
         let pops = db.pops || [];
-        
-        // Filtragem por departamento do usuário
         if (currentUser && currentUser.role !== 'admin' && currentUser.deptId) {
             pops = pops.filter(p => p.dept_id === currentUser.deptId);
         }
 
-        if (pops.length === 0) {
-            grid.innerHTML = '<div class="glass" style="grid-column: 1/-1; padding: 40px; text-align: center; color: var(--text-muted);"><i class="ph ph-mask-sad" style="font-size: 3rem; margin-bottom: 16px;"></i><p>Nenhuma rotina cadastrada para seu setor ainda.</p></div>';
+        // 2. Mostrar "Checklists de Rotina" Dinamicamente Baseados no Campo 'fluxo'
+        const routineItems = db.checklistItems.filter(i => i.fluxo === 'rotina' && i.status === 'Ativo');
+        
+        // Agrupar itens de rotina por departamento
+        const routineDepts = {};
+        routineItems.forEach(item => {
+            if (!routineDepts[item.dept_id]) routineDepts[item.dept_id] = [];
+            routineDepts[item.dept_id].push(item);
+        });
+
+        // Filtrar departamentos do usuário se não for admin
+        let deptsToShow = Object.keys(routineDepts);
+        if (currentUser && currentUser.role !== 'admin' && currentUser.deptId) {
+            deptsToShow = deptsToShow.filter(dId => dId === currentUser.deptId);
+        }
+
+        if (pops.length === 0 && deptsToShow.length === 0) {
+            grid.innerHTML = '<div class="glass" style="grid-column: 1/-1; padding: 40px; text-align: center; color: var(--text-muted);"><i class="ph ph-mask-sad" style="font-size: 3rem; margin-bottom: 16px;"></i><p>Nenhuma rotina ou checklist de gerente cadastrado para seu setor ainda.</p></div>';
             return;
         }
 
+        // Renderizar Cards de Checklists de Rotina (Gerentes)
+        deptsToShow.forEach(deptId => {
+            const dept = db.departments.find(d => d.id === deptId);
+            const deptName = dept ? dept.name : 'Setor';
+            const itemsInDept = routineDepts[deptId];
+
+            const card = document.createElement('div');
+            card.className = 'glass select-card';
+            card.style = "display: flex; flex-direction: column; text-align: left; padding: 20px; align-items: start; border-left: 4px solid var(--accent);";
+            
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; width:100%; margin-bottom:12px;">
+                    <i class="ph ph-list-checks" style="font-size: 2rem; color: var(--accent);"></i>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                        <span class="badge badge-accent">ROTINA DIÁRIA</span>
+                        <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">${deptName}</span>
+                    </div>
+                </div>
+                <h4 style="margin: 0 0 8px 0; font-size: 1.1rem;">Checklist de Gerente - ${deptName}</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); flex: 1; margin-bottom: 16px;">Checklist específico para acompanhamento operacional do gerente/encarregado.</p>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">
+                    <i class="ph ph-info"></i> ${itemsInDept.length} itens a verificar
+                </div>
+                <button class="btn btn-accent btn-full btn-start-routine" data-dept="${deptId}">
+                    Iniciar Rotina <i class="ph ph-play"></i>
+                </button>
+            `;
+            
+            card.querySelector('.btn-start-routine').addEventListener('click', () => {
+                startRoutineFlow(deptId, itemsInDept);
+            });
+
+            grid.appendChild(card);
+        });
+
+        // Renderizar POPs Legados (se ainda forem usados)
         pops.forEach(pop => {
             const dept = db.departments.find(d => d.id === pop.dept_id);
             const deptName = dept ? dept.name : 'Geral';
@@ -906,6 +960,47 @@ const _genChecksum = (str) => {
     let selectedStoreId = null;
     let deptResponsibleName = '';
     
+    window.startRoutineFlow = function(deptId, items) {
+        const dept = db.departments.find(d => d.id === deptId);
+        if (!dept) return;
+
+        // Resetar auditoria atual para modo Rotina
+        currentAudit = {
+            id: 'aud_rot_' + Date.now(),
+            storeId: selectedStoreId || (db.stores.length > 0 ? db.stores[0].id : null),
+            date: new Date().toISOString(),
+            type: 'rotina',
+            deptId: deptId,
+            deptName: dept.name,
+            departments: []
+        };
+
+        if (!currentAudit.storeId) {
+            alert('Por favor, selecione uma loja no menu "Nova Auditoria" primeiro.');
+            switchSection('audit-flow');
+            return;
+        }
+
+        activeDeptId = dept.id;
+        deptResponsibleName = currentUser ? currentUser.name : "";
+
+        // Mudar para o fluxo de auditoria e exibir os itens de rotina
+        switchSection('audit-flow');
+        document.querySelectorAll('.audit-step').forEach(s => s.classList.add('hidden'));
+        document.getElementById('step-3').classList.remove('hidden');
+        
+        const store = db.stores.find(s => s.id === currentAudit.storeId);
+        document.getElementById('step-3-store-title').innerText = store ? store.name : 'Loja';
+        document.getElementById('step-3-dept-title').innerText = 'Rotina: ' + dept.name;
+
+        // Renderizar apenas os itens de rotina
+        if (typeof renderQuestions === 'function') {
+            renderQuestions(items, 'Itens de Rotina - ' + dept.name);
+        }
+        
+        updateProgressBar(1.0);
+    };
+
     window.startAuditFromPOP = function(popId) {
         const pop = db.pops.find(p => p.id === popId);
         if (!pop) return;
@@ -1504,8 +1599,12 @@ const _genChecksum = (str) => {
     window.renderQuestions = renderQuestions;
 
     function populateCategoriesAndItems(categoryId) {
-        // Filter only items belonging to the active department AND selected category
-        let items = db.checklistItems.filter(i => i.dept_id === activeDeptId && i.cat_id === categoryId);
+        // Filter only items belonging to the active department AND selected category AND 'auditoria' flow
+        let items = db.checklistItems.filter(i => 
+            i.dept_id === activeDeptId && 
+            i.cat_id === categoryId && 
+            (i.fluxo === 'auditoria' || !i.fluxo)
+        );
 
         // Se for retorno, filtrar apenas itens reprovados na auditoria pai
         if (activeAuditType === 'retorno' && parentAuditId) {
@@ -3400,15 +3499,18 @@ window.renderAdminChecklists = function () {
 
         // Header row for department
         const headerRow = document.createElement('tr');
-        headerRow.innerHTML = `<td colspan="6" style="background:rgba(239, 68, 68, 0.1); font-weight:600; color:var(--primary); padding:8px 12px; border-radius:6px;">${deptName} (${grouped[deptId].length} itens)</td>`;
+        headerRow.innerHTML = `<td colspan="7" style="background:rgba(239, 68, 68, 0.1); font-weight:600; color:var(--primary); padding:8px 12px; border-radius:6px;">${deptName} (${grouped[deptId].length} itens)</td>`;
         tbody.appendChild(headerRow);
 
         grouped[deptId].forEach(i => {
             const tr = document.createElement('tr');
             const cat = db.categories.find(c => c.id === i.cat_id);
             const catName = cat ? cat.name : 'Sem categoria';
+            const fluxoLabel = i.fluxo === 'rotina' ? '<span class="badge badge-accent">Rotina</span>' : '<span class="badge badge-outline">Auditoria</span>';
+            
             tr.innerHTML = `
                 <td>${i.question}</td>
+                <td>${fluxoLabel}</td>
                 <td>${deptName}</td>
                 <td>${catName}</td>
                 <td>${i.order || '-'}</td>
@@ -3482,6 +3584,7 @@ if (checklistForm) {
         const q = document.getElementById('cl-question').value.trim();
         const deptId = clDeptSelect.value;
         const catId = clCatSelect.value;
+        const flow = document.getElementById('cl-flow').value;
         const order = parseInt(document.getElementById('cl-order').value) || null;
         const isActive = document.getElementById('cl-is-active').checked;
         const isCritical = document.getElementById('cl-is-critical').checked;
@@ -3496,6 +3599,7 @@ if (checklistForm) {
             dept_id: deptId,
             cat_id: catId || 'none',
             question: q,
+            fluxo: flow,
             order: order,
             status: isActive ? 'Ativo' : 'Inativo',
             eh_critico: isCritical

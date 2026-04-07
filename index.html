@@ -913,7 +913,14 @@
                                     </div>
 
                                     <div class="form-row" style="display:flex; gap:24px; align-items:center; margin-bottom:20px; flex-wrap:wrap;">
-                                        <div class="form-group" style="flex:1; min-width:120px;">
+                                        <div class="form-group" style="flex:1; min-width:180px;">
+                                            <label>Fluxo de Destino *</label>
+                                            <select id="cl-flow" required>
+                                                <option value="auditoria">Auditoria Padrão (Auditor)</option>
+                                                <option value="rotina">Rotina do Setor (Gerente/Supervisor)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="width:100px;">
                                             <label>Ordem</label>
                                             <input type="number" id="cl-order" placeholder="Automático" min="1">
                                         </div>
@@ -940,6 +947,7 @@
                                     <thead>
                                         <tr>
                                             <th>Pergunta</th>
+                                            <th>Fluxo</th>
                                             <th>Departamento</th>
                                             <th>Categoria</th>
                                             <th>Ordem</th>
