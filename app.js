@@ -468,8 +468,15 @@ const _genChecksum = (str) => {
         // Sanitizações globais e injeções (Ruan user)
         if (!db.categories) db.categories = defaultCategories;
         if (!db.companies) db.companies = [];
-        if (!db.audits) db.audits = [];
-        db.audits = db.audits.filter(a => a && a.id && a.date);
+        if(db.checklistItems) {
+            db.checklistItems.forEach(item => {
+                if(!item.fluxo) {
+                    // Se o item estiver em algum POP, ele é de 'rotina'
+                    const isInPop = db.pops && db.pops.some(p => p.items && p.items.includes(item.id));
+                    item.fluxo = isInPop ? 'rotina' : 'auditoria';
+                }
+            });
+        }
         if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' };
 
         // Injeção de Alçada de Decisão e Fluxo (Novo Campo)
@@ -1045,7 +1052,11 @@ const _genChecksum = (str) => {
         if (typeof renderQuestions === 'function') {
             // Filtrar apenas os itens que pertencem ao POP
             const popItems = db.checklistItems.filter(item => pop.items.includes(item.id));
-            renderQuestions(popItems);
+            if (popItems.length === 0) {
+                alert('Este POP não possui itens vinculados ou os itens foram excluídos.');
+                return;
+            }
+            renderQuestions(popItems, pop.name);
         }
         
         updateProgressBar(0.75);
@@ -1467,7 +1478,7 @@ const _genChecksum = (str) => {
         sec.style.padding = '20px';
         sec.style.marginBottom = '20px';
         
-        let html = `<h4 style="margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">${title}</h4>`;
+        let html = `<h4 style="margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">${title || 'Avaliação'}</h4>`;
         
         items.forEach(item => {
             const criticoBadge = item.eh_critico ? '<span class="badge badge-danger">CRÍTICO</span>' : '';
@@ -2909,7 +2920,6 @@ const _genChecksum = (str) => {
             return;
         }
 
-        // Preencher selects de departamento (IA e Edit)
         renderDeptSelects();
 
         pops.forEach(pop => {
@@ -2922,11 +2932,15 @@ const _genChecksum = (str) => {
                 <td>${pop.items.length} itens</td>
                 <td>
                     <div style="display:flex; gap:8px;">
-                        <button class="btn btn-ghost btn-sm" onclick="window.editPOP('${pop.id}')"><i class="ph ph-pencil-simple" style="color:var(--primary);"></i></button>
-                        <button class="btn btn-ghost btn-sm" onclick="window.deletePOP('${pop.id}')"><i class="ph ph-trash" style="color:var(--danger);"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-edit-pop" data-id="${pop.id}"><i class="ph ph-pencil-simple" style="color:var(--primary);"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-delete-pop" data-id="${pop.id}"><i class="ph ph-trash" style="color:var(--danger);"></i></button>
                     </div>
                 </td>
             `;
+            
+            tr.querySelector('.btn-edit-pop').addEventListener('click', () => window.editPOP(pop.id));
+            tr.querySelector('.btn-delete-pop').addEventListener('click', () => window.deletePop(pop.id));
+            
             tbody.appendChild(tr);
         });
     };
@@ -3021,6 +3035,7 @@ const _genChecksum = (str) => {
                         question: text,
                         eh_critico: false,
                         status: "Ativo",
+                        fluxo: "rotina",
                         order: index + 1
                     });
                 }
@@ -3039,7 +3054,7 @@ const _genChecksum = (str) => {
         });
     }
 
-    window.deletePOP = function(id) {
+    window.deletePop = function(id) {
         if (!confirm('Tem certeza que deseja excluir este POP?')) return;
         db.pops = db.pops.filter(p => p.id !== id);
         saveDB();
@@ -3182,6 +3197,7 @@ const _genChecksum = (str) => {
                 question: text,
                 eh_critico: false,
                 status: "Ativo",
+                fluxo: "rotina",
                 order: i + 1
             });
             newPop.items.push(itemId);
