@@ -470,7 +470,13 @@ const _genChecksum = (str) => {
         if (!db.companies) db.companies = [];
         if(db.checklistItems) {
             db.checklistItems.forEach(item => {
-                if(!item.fluxo) {
+                // Migração estrita: Se o item estiver em algum POP, ele é 'rotina'. 
+                // Caso contrário ou se for indefinido, ele é 'auditoria'.
+                const isInPop = db.pops && db.pops.some(p => p.items && p.items.includes(item.id));
+                
+                if (isInPop) {
+                    item.fluxo = 'rotina';
+                } else {
                     item.fluxo = 'auditoria';
                 }
             });
@@ -3192,6 +3198,8 @@ const _genChecksum = (str) => {
             ai_status: 'processed'
         };
 
+        const flow = document.getElementById('ai-pop-flow').value || 'rotina';
+        
         // Salvar itens no banco global e vincular ao POP
         selectedItems.forEach((text, i) => {
             const itemId = 'i_ai_' + Date.now() + '_' + i;
@@ -3201,7 +3209,7 @@ const _genChecksum = (str) => {
                 question: text,
                 eh_critico: false,
                 status: "Ativo",
-                fluxo: "rotina",
+                fluxo: flow,
                 order: i + 1
             });
             newPop.items.push(itemId);
