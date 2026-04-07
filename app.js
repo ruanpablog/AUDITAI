@@ -803,6 +803,10 @@ const _genChecksum = (str) => {
             renderMyPOPs();
         }
 
+        if (sectionId === 'audit-flow') {
+            populateStores();
+        }
+
         if (window.innerWidth <= 900) closeSidebar();
     };
 
