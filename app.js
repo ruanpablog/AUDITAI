@@ -471,24 +471,19 @@ const _genChecksum = (str) => {
         if(db.checklistItems) {
             db.checklistItems.forEach(item => {
                 if(!item.fluxo) {
-                    // Se o item estiver em algum POP, ele é de 'rotina'
-                    const isInPop = db.pops && db.pops.some(p => p.items && p.items.includes(item.id));
-                    item.fluxo = isInPop ? 'rotina' : 'auditoria';
+                    item.fluxo = 'auditoria';
                 }
             });
         }
         if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' };
 
-        // Injeção de Alçada de Decisão e Fluxo (Novo Campo)
+        // Injeção de Alçada de Decisão
         if (db.checklistItems) {
             db.checklistItems.forEach(item => {
                 if (item.eh_alcada === undefined) {
                     // Itens específicos que são Alçada de Diretoria (Investimento/Estrutura)
                     const alcadaIds = ['i110', 'i6', 'i97', 'i41', 'i126']; 
                     item.eh_alcada = alcadaIds.includes(item.id);
-                }
-                if (!item.fluxo) {
-                    item.fluxo = 'auditoria'; // Padrão para itens legados
                 }
             });
         }
@@ -1295,6 +1290,15 @@ const _genChecksum = (str) => {
         const deptCats = db.categories.filter(c => c.dept_id === deptId);
 
         deptCats.forEach(c => {
+            // Filtrar apenas categorias que possuem itens para o fluxo atual (Auditoria)
+            const catItems = db.checklistItems.filter(i => 
+                i.dept_id === deptId && 
+                i.cat_id === c.id && 
+                (i.fluxo === 'auditoria' || !i.fluxo)
+            );
+
+            if (catItems.length === 0 && activeAuditType !== 'retorno') return;
+
             // Se for retorno, verificar se esta categoria tem falhas na auditoria pai
             if (activeAuditType === 'retorno' && parentAuditId) {
                 const parentAudit = db.audits.find(a => a.id === parentAuditId);
