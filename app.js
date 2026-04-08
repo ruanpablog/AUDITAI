@@ -3204,10 +3204,19 @@ const _genChecksum = (str) => {
         
         const base64Data = await base64Promise;
 
-        const prompt = `Analise este documento de POP (Procedimento Operacional Padrão) e extraia uma lista de 5 a 10 itens de checklist objetivos e práticos para auditoria. 
-        Retorne APENAS um array JSON contendo as frases dos itens. 
-        Exemplo de formato: ["Item 1", "Item 2", "Item 3"]
-        Foque em limpeza, operação e segurança.`;
+        const prompt = `Analise este documento de Procedimento Operacional Padrão (POP) ou imagem de checklist. 
+        Extraia de 5 a 12 itens de verificação objetivos e práticos que um auditor possa responder com "Sim", "Não" ou "Não se Aplica".
+        
+        IMPORTANTE: Ignore cabeçalhos e textos informativos. Foque apenas em ações de verificação.
+        
+        RETORNE O RESULTADO ESTRITAMENTE COMO UM ARRAY JSON DE STRINGS.
+        Exemplo: ["Verificar se o balcão está limpo", "Validar data de vencimento dos produtos"]`;
+
+        // Normalizar MIME Type para o Gemini
+        let mimeType = file.type || "image/jpeg";
+        if (file.name.toLowerCase().endsWith('.pdf')) mimeType = "application/pdf";
+        if (file.name.toLowerCase().endsWith('.png')) mimeType = "image/png";
+        if (file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.jpeg')) mimeType = "image/jpeg";
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
@@ -3216,11 +3225,12 @@ const _genChecksum = (str) => {
                 contents: [{
                     parts: [
                         { text: prompt },
-                        { inline_data: { mime_type: file.type || "image/jpeg", data: base64Data } }
+                        { inline_data: { mime_type: mimeType, data: base64Data } }
                     ]
                 }],
                 generationConfig: {
                     response_mime_type: "application/json",
+                    temperature: 0.1
                 }
             })
         });
