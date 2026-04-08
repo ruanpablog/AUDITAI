@@ -848,16 +848,22 @@ const _genChecksum = (str) => {
             deptsToShow = deptsToShow.filter(dId => dId === currentUser.deptId);
         }
 
-        if (pops.length === 0 && deptsToShow.length === 0) {
-            grid.innerHTML = '<div class="glass" style="grid-column: 1/-1; padding: 40px; text-align: center; color: var(--text-muted);"><i class="ph ph-mask-sad" style="font-size: 3rem; margin-bottom: 16px;"></i><p>Nenhuma rotina ou checklist de gerente cadastrado para seu setor ainda.</p></div>';
-            return;
-        }
-
         // Renderizar Cards de Checklists de Rotina (Gerentes)
         deptsToShow.forEach(deptId => {
+            const itemsInDept = routineDepts[deptId];
+            
+            // Verificar se esses itens já são cobertos por um POP individual
+            // Se todos os itens do depto já estão em algum POP, não mostramos o card genérico
+            const allItemsCoveredByPops = itemsInDept.every(item => 
+                pops.some(pop => pop.items && pop.items.includes(item.id))
+            );
+            
+            if (allItemsCoveredByPops && pops.some(p => p.dept_id === deptId)) {
+                return; // Pular card genérico se já existe POP específico
+            }
+
             const dept = db.departments.find(d => d.id === deptId);
             const deptName = dept ? dept.name : 'Setor';
-            const itemsInDept = routineDepts[deptId];
 
             const card = document.createElement('div');
             card.className = 'glass select-card';
@@ -998,8 +1004,14 @@ const _genChecksum = (str) => {
         document.getElementById('step-3').classList.remove('hidden');
         
         const store = db.stores.find(s => s.id === currentAudit.storeId);
-        document.getElementById('step-3-store-title').innerText = store ? store.name : 'Loja';
-        document.getElementById('step-3-dept-title').innerText = 'Rotina: ' + dept.name;
+        const storeTitle = document.getElementById('current-store-title-step3');
+        if (storeTitle) storeTitle.innerText = store ? store.name : 'Loja';
+        
+        const deptTitle = document.getElementById('current-dept-title');
+        if (deptTitle) deptTitle.innerText = 'Rotina: ' + dept.name;
+
+        const badgeContainer = document.getElementById('step-3-badge-container');
+        if (badgeContainer) badgeContainer.innerHTML = '<span class="badge badge-accent" style="padding:6px 12px; font-size:0.75rem;"><i class="ph ph-list-checks"></i> MODO ROTINA</span>';
 
         // Renderizar apenas os itens de rotina
         if (typeof renderQuestions === 'function') {
@@ -1046,8 +1058,14 @@ const _genChecksum = (str) => {
         document.getElementById('step-3').classList.remove('hidden');
         
         const store = db.stores.find(s => s.id === currentAudit.storeId);
-        document.getElementById('step-3-store-title').innerText = store ? store.name : 'Loja';
-        document.getElementById('step-3-dept-title').innerText = dept.name;
+        const storeTitle = document.getElementById('current-store-title-step3');
+        if (storeTitle) storeTitle.innerText = store ? store.name : 'Loja';
+        
+        const deptTitle = document.getElementById('current-dept-title');
+        if (deptTitle) deptTitle.innerText = pop.name;
+
+        const badgeContainer = document.getElementById('step-3-badge-container');
+        if (badgeContainer) badgeContainer.innerHTML = '<span class="badge badge-primary" style="padding:6px 12px; font-size:0.75rem;"><i class="ph ph-file-text"></i> PROCEDIMENTO (POP)</span>';
 
         // Limpar respostas anteriores no questionnaire
         if (typeof renderQuestions === 'function') {
