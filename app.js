@@ -481,7 +481,7 @@ const _genChecksum = (str) => {
                 }
             });
         }
-        if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' };
+        if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', gemini_key: '' };
 
         // Injeção de Alçada de Decisão
         if (db.checklistItems) {
@@ -3156,22 +3156,91 @@ const _genChecksum = (str) => {
 
     if (btnProcessPopAi) {
         btnProcessPopAi.addEventListener('click', async () => {
+            if (!selectedPopFile) {
+                alert('Por favor, selecione um arquivo primeiro.');
+                return;
+            }
+
             document.getElementById('ai-step-upload').classList.add('hidden');
             document.getElementById('ai-step-processing').classList.remove('hidden');
 
-            // Simulação de processamento de IA (3 segundos)
-            setTimeout(() => {
-                const mockItems = [
-                    "Verificar temperatura do balcão (deve estar entre 0°C e 5°C).",
-                    "Limpar área de manipulação com álcool 70%.",
-                    "Garantir uso de EPIs completos (touca, luvas, avental).",
-                    "Verificar data de validade dos produtos expostos.",
-                    "Higienizar utensílios de corte ao final do turno."
-                ];
-                
-                renderAiReview(mockItems);
-            }, 3000);
+            // Se houver chave Gemini, usar análise real
+            if (db.config && db.config.gemini_key) {
+                try {
+                    const items = await processFileWithGemini(selectedPopFile);
+                    renderAiReview(items);
+                } catch (error) {
+                    console.error('Erro na análise IA:', error);
+                    alert('Erro na análise real da IA. Usando modo de simulação...\nDetalhe: ' + error.message);
+                    useMockAi();
+                }
+            } else {
+                useMockAi();
+            }
         });
+    }
+
+    function useMockAi() {
+        setTimeout(() => {
+            const mockItems = [
+                "Verificar temperatura do balcão (deve estar entre 0°C e 5°C).",
+                "Limpar área de manipulação com álcool 70%.",
+                "Garantir uso de EPIs completos (touca, luvas, avental).",
+                "Verificar data de validade dos produtos expostos.",
+                "Higienizar utensílios de corte ao final do turno."
+            ];
+            renderAiReview(mockItems);
+        }, 2000);
+    }
+
+    async function processFileWithGemini(file) {
+        const apiKey = db.config.gemini_key;
+        const reader = new FileReader();
+        
+        const base64Promise = new Promise((resolve) => {
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.readAsDataURL(file);
+        });
+        
+        const base64Data = await base64Promise;
+
+        const prompt = `Analise este documento de POP (Procedimento Operacional Padrão) e extraia uma lista de 5 a 10 itens de checklist objetivos e práticos para auditoria. 
+        Retorne APENAS um array JSON contendo as frases dos itens. 
+        Exemplo de formato: ["Item 1", "Item 2", "Item 3"]
+        Foque em limpeza, operação e segurança.`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: prompt },
+                        { inline_data: { mime_type: file.type || "image/jpeg", data: base64Data } }
+                    ]
+                }],
+                generationConfig: {
+                    response_mime_type: "application/json",
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error?.message || 'Erro desconhecido na API do Gemini');
+        }
+
+        const result = await response.json();
+        const content = result.candidates[0].content.parts[0].text;
+        
+        try {
+            return JSON.parse(content);
+        } catch (e) {
+            // Fallback se n retornar JSON puro
+            const match = content.match(/\[.*\]/s);
+            if (match) return JSON.parse(match[0]);
+            throw new Error('Falha ao processar sugestões da IA.');
+        }
     }
 
     function renderAiReview(items) {
@@ -3675,6 +3744,9 @@ function renderAdminSettings() {
     if (svc) svc.value = db.config.emailjs_service || '';
     if (tmp) tmp.value = db.config.emailjs_template || '';
     if (pub) pub.value = db.config.emailjs_public_key || '';
+    
+    const gemini = document.getElementById('cfg-gemini-key');
+    if (gemini) gemini.value = db.config.gemini_key || '';
 
     const syncIdEl = document.getElementById('cfg-sync-id');
     if (syncIdEl) syncIdEl.value = getCloudId();
@@ -3686,6 +3758,7 @@ if (emailConfigForm) {
         db.config.emailjs_service = document.getElementById('cfg-email-service').value.trim();
         db.config.emailjs_template = document.getElementById('cfg-email-template').value.trim();
         db.config.emailjs_public_key = document.getElementById('cfg-email-public-key').value.trim();
+        db.config.gemini_key = document.getElementById('cfg-gemini-key').value.trim();
         
         saveDB();
         alert('Configurações salvas com sucesso!');
