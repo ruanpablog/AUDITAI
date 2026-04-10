@@ -481,7 +481,12 @@ const _genChecksum = (str) => {
                 }
             });
         }
-        if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', gemini_key: '' };
+        if (!db.config) {
+            db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', gemini_key: '' };
+        } else {
+            // Garantir que novos campos de configuração existam para usuários antigos
+            if (db.config.gemini_key === undefined) db.config.gemini_key = '';
+        }
 
         // Injeção de Alçada de Decisão
         if (db.checklistItems) {
@@ -3165,16 +3170,18 @@ const _genChecksum = (str) => {
             document.getElementById('ai-step-processing').classList.remove('hidden');
 
             // Se houver chave Gemini, usar análise real
-            if (db.config && db.config.gemini_key) {
+            if (db.config && db.config.gemini_key && db.config.gemini_key.trim() !== "") {
                 try {
                     const items = await processFileWithGemini(selectedPopFile);
                     renderAiReview(items);
                 } catch (error) {
                     console.error('Erro na análise IA:', error);
-                    alert('Erro na análise real da IA. Usando modo de simulação...\nDetalhe: ' + error.message);
+                    alert('Erro na análise real: ' + error.message + '\n\nO sistema usará o checklist de exemplo como redundância.');
                     useMockAi();
                 }
             } else {
+                console.warn('Gemini Key não configurada. Usando Mock.');
+                alert('Atenção: Você não configurou a Chave de API do Gemini no Painel Admin. \n\nPara ter uma análise real do seu arquivo, insira a chave nas configurações. Por enquanto, usaremos um checklist de exemplo.');
                 useMockAi();
             }
         });
