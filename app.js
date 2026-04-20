@@ -3336,7 +3336,7 @@ const _genChecksum = (str) => {
                     ]
                 }],
                 generationConfig: {
-                    response_mime_type: "application/json",
+                    responseMimeType: "application/json",
                     temperature: 0.1
                 }
             })
