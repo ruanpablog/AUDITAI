@@ -431,7 +431,7 @@ const _genChecksum = (str) => {
                 audits: [],
                 companies: [],
                 pops: [],
-                config: { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' }
+                config: { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', gemini_key: 'AIzaSyAYicGW2sbsnprhWEHmRDG3mWM2DntSfnI' }
             };
         }
 
@@ -482,10 +482,12 @@ const _genChecksum = (str) => {
             });
         }
         if (!db.config) {
-            db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', gemini_key: '' };
+            db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', gemini_key: 'AIzaSyAYicGW2sbsnprhWEHmRDG3mWM2DntSfnI' };
         } else {
-            // Garantir que novos campos de configuração existam para usuários antigos
-            if (db.config.gemini_key === undefined) db.config.gemini_key = '';
+            // Garantir que a chave do usuário seja a preferencial
+            if (!db.config.gemini_key || db.config.gemini_key.trim() === "") {
+                db.config.gemini_key = 'AIzaSyAYicGW2sbsnprhWEHmRDG3mWM2DntSfnI';
+            }
         }
 
         // Injeção de Alçada de Decisão
