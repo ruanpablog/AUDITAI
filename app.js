@@ -3257,7 +3257,7 @@ const _genChecksum = (str) => {
         btnProcessPopAi.disabled = false;
     }
 
-        if (btnProcessPopAi) {
+    if (btnProcessPopAi) {
         btnProcessPopAi.addEventListener('click', async () => {
             if (!selectedPopFile) {
                 alert('Por favor, selecione um arquivo primeiro.');
@@ -3267,38 +3267,29 @@ const _genChecksum = (str) => {
             document.getElementById('ai-step-upload').classList.add('hidden');
             document.getElementById('ai-step-processing').classList.remove('hidden');
 
-            // Atualizar mensagem de progresso
             const progressMsg = document.getElementById('ai-processing-msg');
 
             try {
-                let items;
+                // MOTOR LOCAL: sempre padrão, sem dependência de API
+                if (progressMsg) progressMsg.innerText = 'Extraindo texto do documento...';
+                const text = await extractTextFromFile(selectedPopFile, progressMsg);
 
-                // Opção avançada: usar Gemini se chave estiver configurada
-                if (db.config && db.config.gemini_key && db.config.gemini_key.trim() !== "" && !db.config.gemini_key.startsWith('AIzaSyAYic')) {
-                    if (progressMsg) progressMsg.innerText = 'Conectando à IA do Google...';
-                    items = await processFileWithGemini(selectedPopFile);
-                } else {
-                    // Motor local padrão
-                    if (progressMsg) progressMsg.innerText = 'Extraindo texto do documento...';
-                    const text = await extractTextFromFile(selectedPopFile, progressMsg);
-                    
-                    if (!text || text.trim().length < 30) {
-                        throw new Error('Não foi possível extrair texto suficiente do arquivo. Tente um arquivo de melhor qualidade.');
-                    }
-
-                    if (progressMsg) progressMsg.innerText = 'Analisando procedimentos e obrigatoriedades...';
-                    await new Promise(r => setTimeout(r, 500)); // Pequena pausa para UX
-                    items = analyzeTextLocally(text);
+                if (!text || text.trim().length < 30) {
+                    throw new Error('Não foi possível extrair texto suficiente do arquivo. Verifique se o documento contém texto legível.');
                 }
 
+                if (progressMsg) progressMsg.innerText = 'Analisando obrigatoriedades e critérios do POP...';
+                await new Promise(r => setTimeout(r, 600));
+                const items = analyzeTextLocally(text);
+
                 if (!items || items.length === 0) {
-                    throw new Error('Nenhum item de checklist foi encontrado no documento. Verifique se o arquivo contém texto legível.');
+                    throw new Error('Nenhum item de checklist foi gerado. O documento pode não conter obrigatoriedades identificáveis.');
                 }
 
                 renderAiReview(items);
 
             } catch (error) {
-                console.error('Erro na análise:', error);
+                console.error('Erro na análise local:', error);
                 document.getElementById('ai-step-processing').classList.add('hidden');
                 document.getElementById('ai-step-upload').classList.remove('hidden');
                 alert('Erro na análise: ' + error.message);
