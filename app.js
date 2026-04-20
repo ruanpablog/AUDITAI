@@ -3325,7 +3325,7 @@ const _genChecksum = (str) => {
         if (file.name.toLowerCase().endsWith('.png')) mimeType = "image/png";
         if (file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.jpeg')) mimeType = "image/jpeg";
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3336,7 +3336,6 @@ const _genChecksum = (str) => {
                     ]
                 }],
                 generationConfig: {
-                    responseMimeType: "application/json",
                     temperature: 0.1
                 }
             })
@@ -3347,15 +3346,16 @@ const _genChecksum = (str) => {
             throw new Error(err.error?.message || 'Erro desconhecido na API do Gemini');
         }
 
-        const result = await response.json();
-        const content = result.candidates[0].content.parts[0].text;
+        let content = result.candidates[0].content.parts[0].text;
         
         try {
+            // Limpeza de blocos de código Markdown se existirem
+            content = content.replace(/```json/g, '').replace(/```/g, '').trim();
             return JSON.parse(content);
         } catch (e) {
             const match = content.match(/\[.*\]/s);
             if (match) return JSON.parse(match[0]);
-            throw new Error('Falha ao processar sugestões da IA.');
+            throw new Error('Falha ao processar sugestões da IA: Formato inválido.');
         }
     }
 
