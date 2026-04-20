@@ -3029,11 +3029,6 @@ const _genChecksum = (str) => {
         });
     }
 
-    document.getElementById('nav-admin').addEventListener('click', () => {
-        renderAdminUsers();
-        renderAdminStores();
-        renderAdminPOPs();
-    });
 
     // POP Management Logic
     window.renderAdminPOPs = function () {
@@ -3180,6 +3175,13 @@ const _genChecksum = (str) => {
             alert('POP atualizado com sucesso!');
         });
     }
+
+    window.deletePop = function(id) {
+        if (!confirm('Tem certeza que deseja excluir este POP?')) return;
+        db.pops = db.pops.filter(p => p.id !== id);
+        saveDB();
+        renderAdminPOPs();
+    };
 
     window.deletePop = function(id) {
         if (!confirm('Tem certeza que deseja excluir este POP?')) return;
@@ -3892,36 +3894,37 @@ if (checklistForm) {
 }
 
 // Lógica de Configurações Gerais
-const emailConfigForm = document.getElementById('email-config-form');
-
 function renderAdminSettings() {
-    if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '' };
+    if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', gemini_key: '', imgbb_key: '' };
     
     const svc = document.getElementById('cfg-email-service');
     const tmp = document.getElementById('cfg-email-template');
     const pub = document.getElementById('cfg-email-public-key');
     const imgbb = document.getElementById('cfg-imgbb-key');
+    const gemini = document.getElementById('cfg-gemini-key');
+    const syncIdEl = document.getElementById('cfg-sync-id');
     
     if (svc) svc.value = db.config.emailjs_service || '';
     if (tmp) tmp.value = db.config.emailjs_template || '';
     if (pub) pub.value = db.config.emailjs_public_key || '';
-    
-    const gemini = document.getElementById('cfg-gemini-key');
+    if (imgbb) imgbb.value = db.config.imgbb_key || '';
     if (gemini) gemini.value = db.config.gemini_key || '';
-
-    const syncIdEl = document.getElementById('cfg-sync-id');
     if (syncIdEl) syncIdEl.value = getCloudId();
 }
 
-if (emailConfigForm) {
-    emailConfigForm.addEventListener('submit', (e) => {
+const configForm = document.getElementById('email-config-form');
+if (configForm) {
+    configForm.addEventListener('submit', (e) => {
         e.preventDefault();
+        if (!db.config) db.config = {};
+        
         db.config.emailjs_service = document.getElementById('cfg-email-service').value.trim();
         db.config.emailjs_template = document.getElementById('cfg-email-template').value.trim();
         db.config.emailjs_public_key = document.getElementById('cfg-email-public-key').value.trim();
+        db.config.imgbb_key = document.getElementById('cfg-imgbb-key').value.trim();
         db.config.gemini_key = document.getElementById('cfg-gemini-key').value.trim();
         
-        saveDB();
+        saveDB(true); // Sincroniza com a nuvem ao salvar
         alert('Configurações salvas com sucesso!');
     });
 }
@@ -3930,11 +3933,14 @@ if (emailConfigForm) {
 const nAdmin2 = document.getElementById('nav-admin');
 if (nAdmin2) {
     nAdmin2.addEventListener('click', () => {
+        renderAdminUsers();
+        renderAdminStores();
+        renderAdminPOPs();
         renderAdminCompanies();
         renderAdminDepts();
         renderAdminChecklists();
         renderAdminCategories();
-        renderAdminSettings(); // Adicionado
+        renderAdminSettings();
         if (typeof populateChecklistForm === 'function') populateChecklistForm();
         if (typeof populateCategoryForm === 'function') populateCategoryForm();
     });
