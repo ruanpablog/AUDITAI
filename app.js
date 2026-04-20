@@ -914,22 +914,28 @@ const _genChecksum = (str) => {
             const deptName = dept ? dept.name : 'Geral';
             
             const card = document.createElement('div');
-            card.className = 'glass select-card';
-            card.style = "display: flex; flex-direction: column; text-align: left; padding: 20px; align-items: start;";
+            // Usar estilo premium conforme imagem modelo
+            card.style = "display: flex; flex-direction: column; background: #111827; border-radius: 16px; padding: 24px; position: relative; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 25px rgba(0,0,0,0.3); min-height: 300px;";
             
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; width:100%; margin-bottom:12px;">
-                    <i class="ph ph-file-text" style="font-size: 2rem; color: var(--primary);"></i>
-                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-                        <span class="badge badge-accent">${pop.recurrence}</span>
-                        <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">${deptName}</span>
+                <!-- Icone e Badges -->
+                <div style="display:flex; justify-content:space-between; align-items: flex-start; width:100%; margin-bottom:20px;">
+                    <i class="ph-fill ph-file-text" style="font-size: 3rem; color: #ef4444;"></i>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+                        <span style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 4px 12px; border-radius: 20px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; border: 1px solid rgba(245, 158, 11, 0.3);">${pop.recurrence === 'daily' ? 'daily' : pop.recurrence}</span>
+                        <span style="font-size: 0.7rem; font-weight: 800; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px;">${deptName}</span>
                     </div>
                 </div>
-                <h4 style="margin: 0 0 8px 0; font-size: 1.1rem;">${pop.name}</h4>
-                <p style="font-size: 0.85rem; color: var(--text-muted); flex: 1; margin-bottom: 16px;">${pop.description || 'Procedimento operacional padrão.'}</p>
-                <div style="width: 100%; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; margin-top: auto;">
-                    <span style="font-size: 0.8rem; font-weight: 600;">${pop.items.length} Verificações</span>
-                    <button class="btn btn-primary btn-sm" onclick="window.startAuditFromPOP('${pop.id}')">Iniciar Agora <i class="ph ph-play"></i></button>
+                <!-- Titulo e Descrição -->
+                <h3 style="margin: 0 0 10px 0; font-size: 1.3rem; font-weight: 900; color: #f3f4f6; letter-spacing: -0.5px; line-height: 1.2; text-transform: uppercase;">${pop.name}</h3>
+                <p style="font-size: 0.9rem; color: #9ca3af; line-height: 1.5; margin-bottom: 24px; flex: 1;">${pop.description || 'Gerado automaticamente via leitura de documento.'}</p>
+                
+                <!-- Footer com Divider -->
+                <div style="width: 100%; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; margin-top: auto;">
+                    <span style="font-size: 0.9rem; font-weight: 700; color: #f3f4f6;">${pop.items.length} Verificações</span>
+                    <button class="btn btn-primary" onclick="window.startAuditFromPOP('${pop.id}')" style="background: #ef4444; color: white; padding: 12px 24px; border-radius: 12px; font-weight: 800; font-size: 0.95rem; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); display: flex; align-items: center; gap: 8px;">
+                        Iniciar Agora <i class="ph ph-caret-right" style="font-size: 1.1rem;"></i>
+                    </button>
                 </div>
             `;
             grid.appendChild(card);
@@ -3816,7 +3822,11 @@ const _genChecksum = (str) => {
             db.pops.push(newPop);
             
             saveDB();
-            renderMyPOPs();
+            
+            // Garantir que as visualizações de Admin e Usuário sejam atualizadas se existirem
+            if (typeof renderMyPOPs === 'function') renderMyPOPs();
+            if (typeof renderAdminPOPs === 'function') renderAdminPOPs();
+            
             closeModal('modal-ai-pop');
             alert(`POP "${newPop.name}" criado com sucesso com ${finalItems.length} itens!`);
         } catch (error) {
