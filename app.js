@@ -804,8 +804,15 @@ const _genChecksum = (str) => {
     sidebarOverlay.addEventListener('click', closeSidebar);
 
     const switchSection = (sectionId) => {
+        if (!sectionId) return;
+        const target = document.getElementById(sectionId);
+        if (!target) {
+            console.error(`Seção não encontrada: ${sectionId}`);
+            return;
+        }
+        
         contentSections.forEach(s => s.classList.add('hidden'));
-        document.getElementById(sectionId).classList.remove('hidden');
+        target.classList.remove('hidden');
 
         navBtns.forEach(b => b.classList.remove('active'));
         document.querySelector(`.nav-btn[data-target="${sectionId}"]`)?.classList.add('active');
@@ -1030,60 +1037,120 @@ const _genChecksum = (str) => {
         const pop = db.pops.find(p => p.id === popId);
         if (!pop) return;
 
-        // Resetar auditoria atual
-        currentAudit = {
-            id: 'aud_pop_' + Date.now(),
-            storeId: selectedStoreId || (db.stores.length > 0 ? db.stores[0].id : null),
-            date: new Date().toISOString(),
-            type: 'pop',
-            popId: pop.id,
-            popName: pop.name,
-            departments: []
+        // Guardar o POP atual para o modal de ciência
+        window.activePopAwareness = pop;
+
+        // Resetar o modal de ciência
+        const modal = document.getElementById('modal-pop-awareness');
+        const check = document.getElementById('pop-awareness-check');
+        const btn = document.getElementById('btn-start-audit-final');
+        
+        check.checked = false;
+        btn.disabled = true;
+        modal.classList.remove('hidden');
+
+        // Configurar botão de visualização do POP no modal
+        const btnView = document.getElementById('btn-view-pop-awareness');
+        if (pop.fileData) {
+            btnView.style.display = 'block';
+            btnView.onclick = () => window.viewAttachedDoc(pop.fileData, pop.name);
+        } else {
+            btnView.style.display = 'none';
+        }
+
+        // Habilitar botão ao marcar checkbox
+        check.onchange = () => {
+            btn.disabled = !check.checked;
         };
 
-        if (!currentAudit.storeId) {
-            alert('Por favor, selecione uma loja no menu "Nova Auditoria" primeiro.');
+        // Ação Final de Início
+        btn.onclick = () => {
+            modal.classList.add('hidden');
+            
+            // Iniciar de fato a auditoria
+            currentAudit = {
+                id: 'aud_pop_' + Date.now(),
+                storeId: selectedStoreId || (db.stores.length > 0 ? db.stores[0].id : null),
+                date: new Date().toISOString(),
+                type: 'pop',
+                popId: pop.id,
+                popName: pop.name,
+                popAwarenessConfirmed: true,
+                popAwarenessTimestamp: new Date().toISOString(),
+                auditorIdBase: currentUser ? currentUser.id : 'anon',
+                departments: []
+            };
+
+            if (!currentAudit.storeId) {
+                alert('Por favor, selecione uma loja no menu "Nova Auditoria" primeiro.');
+                switchSection('audit-flow');
+                return;
+            }
+
+            const dept = db.departments.find(d => d.id === pop.dept_id);
+            if (!dept) {
+                alert('Departamento vinculado ao POP não encontrado.');
+                return;
+            }
+
+            activeDeptId = dept.id;
+            deptResponsibleName = "";
+
             switchSection('audit-flow');
-            return;
-        }
+            document.querySelectorAll('.audit-step').forEach(s => s.classList.add('hidden'));
+            document.getElementById('step-3').classList.remove('hidden');
+            
+            const store = db.stores.find(s => s.id === currentAudit.storeId);
+            const storeTitle = document.getElementById('current-store-title-step3');
+            if (storeTitle) storeTitle.innerText = store ? store.name : 'Loja';
+            
+            const deptTitle = document.getElementById('current-dept-title');
+            if (deptTitle) deptTitle.innerText = pop.name;
 
-        const dept = db.departments.find(d => d.id === pop.dept_id);
-        if (!dept) {
-            alert('Departamento vinculado ao POP não encontrado.');
-            return;
-        }
+            const badgeContainer = document.getElementById('step-3-badge-container');
+            if (badgeContainer) {
+                badgeContainer.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+                        <span class="badge badge-primary" style="padding:6px 12px; font-size:0.75rem;"><i class="ph ph-file-text"></i> PROCEDIMENTO (POP)</span>
+                        <button class="btn btn-outline btn-xs" onclick="window.viewAttachedDoc('${pop.fileData ? pop.fileData : ''}', '${pop.name}')" style="font-size:0.65rem;">
+                            <i class="ph ph-eye"></i> Ver POP Original
+                        </button>
+                    </div>
+                `;
+            }
 
-        // Simular seleção de departamento
-        activeDeptId = dept.id;
-        deptResponsibleName = ""; // Gestor pode preencher depois
-
-        // Mudar para o fluxo de auditoria e pular passos
-        switchSection('audit-flow');
-        document.querySelectorAll('.audit-step').forEach(s => s.classList.add('hidden'));
-        document.getElementById('step-3').classList.remove('hidden');
-        
-        const store = db.stores.find(s => s.id === currentAudit.storeId);
-        const storeTitle = document.getElementById('current-store-title-step3');
-        if (storeTitle) storeTitle.innerText = store ? store.name : 'Loja';
-        
-        const deptTitle = document.getElementById('current-dept-title');
-        if (deptTitle) deptTitle.innerText = pop.name;
-
-        const badgeContainer = document.getElementById('step-3-badge-container');
-        if (badgeContainer) badgeContainer.innerHTML = '<span class="badge badge-primary" style="padding:6px 12px; font-size:0.75rem;"><i class="ph ph-file-text"></i> PROCEDIMENTO (POP)</span>';
-
-        // Limpar respostas anteriores no questionnaire
-        if (typeof renderQuestions === 'function') {
-            // Filtrar apenas os itens que pertencem ao POP
             const popItems = db.checklistItems.filter(item => pop.items.includes(item.id));
             if (popItems.length === 0) {
-                alert('Este POP não possui itens vinculados ou os itens foram excluídos.');
+                alert('Este POP não possui itens vinculados.');
                 return;
             }
             renderQuestions(popItems, pop.name);
+            updateProgressBar(0.8);
+        };
+    };
+
+    window.viewAttachedDoc = function(fileData, title) {
+        if (!fileData) {
+            alert('Este POP não possui um documento anexo.');
+            return;
         }
-        
-        updateProgressBar(0.75);
+
+        const modal = document.getElementById('modal-doc-viewer');
+        const content = document.getElementById('doc-viewer-content');
+        const titleEl = document.getElementById('doc-viewer-title');
+
+        titleEl.innerText = title;
+        modal.classList.remove('hidden');
+
+        if (fileData.startsWith('data:application/pdf')) {
+            content.innerHTML = `<iframe src="${fileData}" style="width:100%; height:100%; border:none;"></iframe>`;
+        } else if (fileData.startsWith('data:image')) {
+            content.innerHTML = `<div style="width:100%; height:100%; overflow:auto; padding:20px; text-align:center;">
+                                    <img src="${fileData}" style="max-width:100%; height:auto; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+                                 </div>`;
+        } else {
+            content.innerHTML = `<div style="padding:40px; text-align:center;"><p>Formato de arquivo não suportado para visualização direta.</p></div>`;
+        }
     };
 
     // --- Step 1: Select Store ---
@@ -1914,6 +1981,33 @@ const _genChecksum = (str) => {
         const dateObj = new Date(auditObj.date);
         document.getElementById('report-date').innerText = dateObj.toLocaleDateString('pt-BR');
         document.getElementById('report-auditor').innerText = auditObj.auditor;
+
+        // Log de Conformidade (Audit Trail)
+        const logEl = document.getElementById('report-compliance-log');
+        const popActions = document.getElementById('report-pop-actions');
+        if (auditObj.popAwarenessConfirmed) {
+            logEl.classList.remove('hidden');
+            document.getElementById('log-conf-user').innerText = auditObj.auditor || 'Usuário';
+            const logDate = new Date(auditObj.popAwarenessTimestamp);
+            document.getElementById('log-conf-time').innerText = logDate.toLocaleString('pt-BR');
+        } else {
+            logEl.classList.add('hidden');
+        }
+
+        // Botão Ver POP Original no Relatório
+        if (popActions) {
+            popActions.innerHTML = '';
+            // Buscar se o POP existe e tem arquivo
+            const relatedPop = db.pops ? db.pops.find(p => p.id === auditObj.popId) : null;
+            if (relatedPop && relatedPop.fileData) {
+                const btnPop = document.createElement('button');
+                btnPop.className = 'btn btn-ghost btn-sm';
+                btnPop.style.color = 'var(--primary)';
+                btnPop.innerHTML = '<i class="ph ph-file-pdf"></i> Ver POP Original';
+                btnPop.onclick = () => viewAttachedDoc(relatedPop.fileData, relatedPop.name);
+                popActions.appendChild(btnPop);
+            }
+        }
 
         // Data de Retorno Obrigatória
         const returnActionContainer = document.getElementById('report-return-action-container');
@@ -3211,13 +3305,15 @@ const _genChecksum = (str) => {
         
         const base64Data = await base64Promise;
 
-        const prompt = `Analise este documento de Procedimento Operacional Padrão (POP) ou imagem de checklist. 
-        Extraia de 5 a 12 itens de verificação objetivos e práticos que um auditor possa responder com "Sim", "Não" ou "Não se Aplica".
+        const prompt = `Analise este documento de Procedimento Operacional Padrão (POP) ou imagem técnica. 
+        1. Extraia de 5 a 12 itens de verificação objetivos e práticos.
+        2. Para cada item, defina um nível de SEVERIDADE baseado no risco operacional:
+           - "Crítico": Risco de vida, contaminação grave, interdição ou multa pesada.
+           - "Médio": Falha operacional importante, impacto na qualidade ou organização.
+           - "Leve": Detalhe estético, organização menor ou melhoria de processo.
         
-        IMPORTANTE: Ignore cabeçalhos e textos informativos. Foque apenas em ações de verificação.
-        
-        RETORNE O RESULTADO ESTRITAMENTE COMO UM ARRAY JSON DE STRINGS.
-        Exemplo: ["Verificar se o balcão está limpo", "Validar data de vencimento dos produtos"]`;
+        RETORNE O RESULTADO ESTRITAMENTE COMO UM ARRAY JSON DE OBJETOS.
+        Exemplo de formato: [{"question": "O produto está dentro da validade?", "severity": "Crítico"}, {"question": "Piso está varrido?", "severity": "Leve"}]`;
 
         // Normalizar MIME Type para o Gemini
         let mimeType = file.type || "image/jpeg";
@@ -3253,7 +3349,6 @@ const _genChecksum = (str) => {
         try {
             return JSON.parse(content);
         } catch (e) {
-            // Fallback se n retornar JSON puro
             const match = content.match(/\[.*\]/s);
             if (match) return JSON.parse(match[0]);
             throw new Error('Falha ao processar sugestões da IA.');
@@ -3266,64 +3361,113 @@ const _genChecksum = (str) => {
         const container = document.getElementById('ai-extracted-items');
         container.innerHTML = '';
         
-        items.forEach((text, i) => {
+        items.forEach((item, i) => {
+            const questionText = typeof item === 'object' ? item.question : item;
+            const severity = typeof item === 'object' ? item.severity : 'Médio';
+
             const div = document.createElement('div');
-            div.style = "display:flex; gap:10px; align-items:start; padding:10px; background:var(--glass-bg); border-radius:8px; margin-bottom:8px;";
+            div.className = 'ai-review-item';
+            div.style = "display:flex; flex-direction:column; gap:8px; padding:12px; background:var(--glass-bg); border-radius:12px; border:1px solid var(--border); margin-bottom:12px;";
             div.innerHTML = `
-                <input type="checkbox" checked id="item-ai-${i}" style="width:18px; height:18px; margin-top:2px;">
-                <label for="item-ai-${i}" style="font-size:0.9rem; flex:1; cursor:pointer;">${text}</label>
+                <div style="display:flex; gap:10px; align-items:start;">
+                    <input type="checkbox" checked class="item-ai-check" id="check-ai-${i}" style="width:20px; height:20px; margin-top:10px;">
+                    <div style="flex:1;">
+                        <textarea class="item-ai-question" style="width:100%; min-height:60px; padding:8px; border-radius:6px; border:1px solid var(--border); background:rgba(0,0,0,0.2); color:white; font-size:0.9rem;">${questionText}</textarea>
+                        <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+                            <label style="font-size:0.75rem; color:var(--text-muted);">Severidade:</label>
+                            <select class="item-ai-severity" style="padding:4px 8px; border-radius:4px; font-size:0.8rem; background:var(--primary); color:white; border:none;">
+                                <option value="Leve" ${severity === 'Leve' ? 'selected' : ''}>Leve</option>
+                                <option value="Médio" ${severity === 'Médio' ? 'selected' : ''}>Médio</option>
+                                <option value="Crítico" ${severity === 'Crítico' ? 'selected' : ''}>Crítico</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             `;
             container.appendChild(div);
         });
     }
 
-    document.getElementById('btn-confirm-ai-items').addEventListener('click', () => {
-        const selectedItems = [];
-        document.querySelectorAll('#ai-extracted-items input:checked').forEach(input => {
-            selectedItems.push(input.nextElementSibling.innerText);
+    document.getElementById('btn-confirm-ai-items').addEventListener('click', async () => {
+        const finalItems = [];
+        
+        // Coletar itens revisados
+        document.querySelectorAll('.ai-review-item').forEach(div => {
+            const isChecked = div.querySelector('.item-ai-check').checked;
+            if (isChecked) {
+                finalItems.push({
+                    question: div.querySelector('.item-ai-question').value.trim(),
+                    severity: div.querySelector('.item-ai-severity').value
+                });
+            }
         });
 
-        if (selectedItems.length === 0) {
+        if (finalItems.length === 0) {
             alert('Selecione pelo menos um item.');
             return;
         }
 
-        // Criar o POP
-        const popId = 'pop_' + Date.now();
-        const deptId = document.getElementById('ai-pop-dept').value || db.departments[0].id;
-        
-        const newPop = {
-            id: popId,
-            name: selectedPopFile ? selectedPopFile.name.split('.')[0] : "Novo POP via IA",
-            description: "Gerado automaticamente via leitura de documento.",
-            dept_id: deptId,
-            recurrence: 'daily',
-            items: [],
-            ai_status: 'processed'
-        };
+        const btn = document.getElementById('btn-confirm-ai-items');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = 'Processando...';
 
-        const flow = document.getElementById('ai-pop-flow').value || 'rotina';
-        
-        // Salvar itens no banco global e vincular ao POP
-        selectedItems.forEach((text, i) => {
-            const itemId = 'i_ai_' + Date.now() + '_' + i;
-            db.checklistItems.push({
-                id: itemId,
-                dept_id: deptId,
-                question: text,
-                eh_critico: false,
-                status: "Ativo",
-                fluxo: flow,
-                order: i + 1
+        try {
+            // Ler arquivo original se houver
+            const fileData = await new Promise((resolve) => {
+                if (!selectedPopFile) return resolve(null);
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = () => resolve(null);
+                reader.readAsDataURL(selectedPopFile);
             });
-            newPop.items.push(itemId);
-        });
 
-        db.pops.push(newPop);
-        saveDB();
-        renderAdminPOPs();
-        closeModal('modal-ai-pop');
-        alert('POP criado com sucesso com ' + selectedItems.length + ' itens!');
+            const popId = 'pop_' + Date.now();
+            const deptId = document.getElementById('ai-pop-dept').value || (db.departments.length > 0 ? db.departments[0].id : null);
+            const flow = document.getElementById('ai-pop-flow').value || 'rotina';
+
+            // 1. Criar itens de checklist no DB
+            const dbItemIds = [];
+            finalItems.forEach((f, idx) => {
+                const itemId = `i_ai_${popId}_${idx}`;
+                db.checklistItems.push({
+                    id: itemId,
+                    dept_id: deptId,
+                    cat_id: 'none',
+                    question: f.question,
+                    fluxo: flow,
+                    eh_critico: f.severity === 'Crítico',
+                    severity_level: f.severity,
+                    status: 'Ativo'
+                });
+                dbItemIds.push(itemId);
+            });
+            
+            // 2. Criar objeto POP
+            const newPop = {
+                id: popId,
+                name: selectedPopFile ? selectedPopFile.name.split('.')[0] : "Novo POP via IA",
+                description: "Gerado automaticamente via leitura de documento.",
+                dept_id: deptId,
+                recurrence: 'daily',
+                items: dbItemIds,
+                fileData: fileData // O PDF/Imagem original em Base64
+            };
+
+            if (!db.pops) db.pops = [];
+            db.pops.push(newPop);
+            
+            saveDB();
+            renderMyPOPs();
+            closeModal('modal-ai-pop');
+            alert(`POP "${newPop.name}" criado com sucesso com ${finalItems.length} itens!`);
+        } catch (error) {
+            console.error("Erro ao salvar POP:", error);
+            alert("Erro ao salvar o POP. Verifique o console.");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
     });
 
     // Admin Tabs Logic
