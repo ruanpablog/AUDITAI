@@ -261,6 +261,11 @@ label {
     }
 }
 
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 .auth-card {
     width: 100%;
     max-width: 420px;

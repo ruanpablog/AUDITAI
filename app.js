@@ -3257,7 +3257,7 @@ const _genChecksum = (str) => {
         btnProcessPopAi.disabled = false;
     }
 
-    if (btnProcessPopAi) {
+        if (btnProcessPopAi) {
         btnProcessPopAi.addEventListener('click', async () => {
             if (!selectedPopFile) {
                 alert('Por favor, selecione um arquivo primeiro.');
@@ -3267,37 +3267,255 @@ const _genChecksum = (str) => {
             document.getElementById('ai-step-upload').classList.add('hidden');
             document.getElementById('ai-step-processing').classList.remove('hidden');
 
-            // Se houver chave Gemini, usar análise real
-            if (db.config && db.config.gemini_key && db.config.gemini_key.trim() !== "") {
-                try {
-                    const items = await processFileWithGemini(selectedPopFile);
-                    renderAiReview(items);
-                } catch (error) {
-                    console.error('Erro na análise IA:', error);
-                    alert('Erro na análise real: ' + error.message + '\n\nO sistema usará o checklist de exemplo como redundância.');
-                    useMockAi();
+            // Atualizar mensagem de progresso
+            const progressMsg = document.getElementById('ai-processing-msg');
+
+            try {
+                let items;
+
+                // Opção avançada: usar Gemini se chave estiver configurada
+                if (db.config && db.config.gemini_key && db.config.gemini_key.trim() !== "" && !db.config.gemini_key.startsWith('AIzaSyAYic')) {
+                    if (progressMsg) progressMsg.innerText = 'Conectando à IA do Google...';
+                    items = await processFileWithGemini(selectedPopFile);
+                } else {
+                    // Motor local padrão
+                    if (progressMsg) progressMsg.innerText = 'Extraindo texto do documento...';
+                    const text = await extractTextFromFile(selectedPopFile, progressMsg);
+                    
+                    if (!text || text.trim().length < 30) {
+                        throw new Error('Não foi possível extrair texto suficiente do arquivo. Tente um arquivo de melhor qualidade.');
+                    }
+
+                    if (progressMsg) progressMsg.innerText = 'Analisando procedimentos e obrigatoriedades...';
+                    await new Promise(r => setTimeout(r, 500)); // Pequena pausa para UX
+                    items = analyzeTextLocally(text);
                 }
-            } else {
-                console.warn('Gemini Key não configurada. Usando Mock.');
-                alert('Atenção: Você não configurou a Chave de API do Gemini no Painel Admin. \n\nPara ter uma análise real do seu arquivo, insira a chave nas configurações. Por enquanto, usaremos um checklist de exemplo.');
-                useMockAi();
+
+                if (!items || items.length === 0) {
+                    throw new Error('Nenhum item de checklist foi encontrado no documento. Verifique se o arquivo contém texto legível.');
+                }
+
+                renderAiReview(items);
+
+            } catch (error) {
+                console.error('Erro na análise:', error);
+                document.getElementById('ai-step-processing').classList.add('hidden');
+                document.getElementById('ai-step-upload').classList.remove('hidden');
+                alert('Erro na análise: ' + error.message);
             }
         });
     }
 
-    function useMockAi() {
-        setTimeout(() => {
-            const mockItems = [
-                "Verificar temperatura do balcão (deve estar entre 0°C e 5°C).",
-                "Limpar área de manipulação com álcool 70%.",
-                "Garantir uso de EPIs completos (touca, luvas, avental).",
-                "Verificar data de validade dos produtos expostos.",
-                "Higienizar utensílios de corte ao final do turno."
-            ];
-            renderAiReview(mockItems);
-        }, 2000);
+    // ==========================================
+    // MOTOR LOCAL DE ANÁLISE DE DOCUMENTOS
+    // ==========================================
+
+    async function extractTextFromFile(file, progressEl) {
+        const ext = file.name.toLowerCase();
+        
+        if (ext.endsWith('.pdf')) {
+            if (progressEl) progressEl.innerText = 'Lendo páginas do PDF...';
+            return await extractTextFromPDF(file);
+        } else if (ext.endsWith('.png') || ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.webp')) {
+            if (progressEl) progressEl.innerText = 'Realizando OCR na imagem (pode levar 10-30s)...';
+            return await extractTextFromImage(file);
+        } else if (ext.endsWith('.txt')) {
+            return await file.text();
+        } else {
+            // Tentar como texto puro
+            try { return await file.text(); } catch(e) { throw new Error('Formato não suportado. Use PDF, PNG, JPG ou TXT.'); }
+        }
     }
 
+    async function extractTextFromPDF(file) {
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        if (!pdfjsLib) throw new Error('PDF.js não carregado.');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        
+        let fullText = '';
+        for (let i = 1; i <= Math.min(pdf.numPages, 15); i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            const pageText = content.items.map(item => item.str).join(' ');
+            fullText += pageText + '\n';
+        }
+        return fullText;
+    }
+
+    async function extractTextFromImage(file) {
+        if (!window.Tesseract) throw new Error('Tesseract.js não carregado.');
+        
+        const result = await Tesseract.recognize(file, 'por', {
+            logger: () => {} // Silenciar logs internos
+        });
+        return result.data.text;
+    }
+
+    function analyzeTextLocally(text) {
+        // Normalizar texto
+        text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos para comparação
+                   .toLowerCase();
+        const originalText = text;
+
+        // Verbos e termos de obrigatoriedade em português
+        const obligationKeywords = [
+            'deve ', 'devem ', 'devera ', 'deverao ',
+            'e obrigatorio', 'obrigatoriamente', 'obrigacao',
+            'garantir', 'garantir que', 'garantido',
+            'verificar ', 'verificacao ', 'verificar se',
+            'assegurar', 'assegurar que',
+            'manter ', 'manter o', 'manter a',
+            'realizar ', 'realizar a', 'realizar o',
+            'conferir ', 'conferencia',
+            'controlar', 'controle de',
+            'higienizar', 'higienizacao', 'higienizado',
+            'checar', 'inspecionar', 'inspecao',
+            'registrar ', 'registro de', 'registrar o',
+            'executar ', 'executar a', 'executar o',
+            'proibido', 'nao e permitido', 'nao deve',
+            'responsavel por', 'responsabilidade de',
+            'monitorar', 'monitoramento',
+            'aplicar ', 'aplicacao de',
+            'utilizar ', 'utilizar somente',
+            'certificar', 'certificar-se',
+            'checar se', 'avaliar '
+        ];
+
+        // Palavras-chave de severidade
+        const criticalKeywords = [
+            'contaminacao', 'contaminado', 'contaminante',
+            'temperatura', 'cadeia de frio',
+            'validade', 'vencido', 'vencimento',
+            'risco', 'perigo', 'perigoso',
+            'seguranca', 'acidente',
+            'intoxicacao', 'intoxicado',
+            'praga', 'inseto', 'roedor',
+            'incendio', 'incendiar',
+            'epi', 'equipamento de protecao',
+            'critico', 'critica',
+            'contaminacao cruzada', 'microbiana',
+            'sanitizacao', 'desinfeccao',
+            'vigilancia sanitaria', 'anvisa',
+            'descarte', 'residuo',
+            'veneno', 'toxico'
+        ];
+
+        const mediumKeywords = [
+            'higiene', 'higienico',
+            'limpeza', 'limpar', 'limpo',
+            'padrao', 'conformidade',
+            'qualidade',
+            'armazenamento', 'armazenar',
+            'organizacao', 'organizado',
+            'processo', 'procedimento',
+            'treinamento', 'capacitacao',
+            'calibracao', 'calibrar',
+            'etiqueta', 'identificacao',
+            'rotatividade', 'peps', 'fifo',
+            'manuseio', 'manipulacao',
+            'rastreabilidade'
+        ];
+
+        // Dividir texto em frases/parágrafos
+        const rawSentences = originalText.split(/[.!?\n;]+/).map(s => s.trim()).filter(s => s.length > 20 && s.length < 300);
+
+        const checklistItems = [];
+        const seen = new Set();
+
+        rawSentences.forEach(sentence => {
+            const lower = sentence.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+            // Verificar se frase contém obrigatoriedade
+            const hasObligation = obligationKeywords.some(kw => lower.includes(kw));
+            if (!hasObligation) return;
+
+            // Evitar duplicatas aproximadas (primeiras 40 chars)
+            const key = sentence.substring(0, 40).toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+
+            // Determinar severidade
+            let severity = 'Leve';
+            if (criticalKeywords.some(kw => lower.includes(kw))) {
+                severity = 'Crítico';
+            } else if (mediumKeywords.some(kw => lower.includes(kw))) {
+                severity = 'Médio';
+            }
+
+            // Converter frase em pergunta de checklist
+            let question = formatAsQuestion(sentence.trim());
+
+            checklistItems.push({ question, severity });
+
+            if (checklistItems.length >= 15) return;
+        });
+
+        // Se poucos itens encontrados, gerar a partir de palavras-chave de domínio
+        if (checklistItems.length < 3) {
+            const domainItems = generateDomainItems(originalText);
+            domainItems.forEach(item => checklistItems.push(item));
+        }
+
+        return checklistItems.slice(0, 15);
+    }
+
+    function formatAsQuestion(sentence) {
+        // Remove numeração inicial (1. ou 1))
+        sentence = sentence.replace(/^\d+[\.\)]\s*/, '').trim();
+        // Capitalizar primeira letra
+        sentence = sentence.charAt(0).toUpperCase() + sentence.slice(1);
+        
+        // Se já é uma pergunta, retornar como está
+        if (sentence.endsWith('?')) return sentence;
+
+        // Transformar em pergunta baseada no tipo de frase
+        const lower = sentence.toLowerCase();
+        
+        if (lower.startsWith('verificar') || lower.startsWith('checar') || lower.startsWith('conferir')) {
+            return sentence.replace(/^(Verificar|Checar|Conferir)/i, (m) => `${m} se`) + '?';
+        }
+        if (lower.startsWith('garantir')) {
+            return sentence + '?';
+        }
+        if (lower.startsWith('higienizar') || lower.startsWith('limpar')) {
+            return 'A área/equipamento foi ' + sentence.toLowerCase() + '?';
+        }
+        
+        // Padrão: prefixar com "O procedimento de"
+        return 'O procedimento está sendo seguido: ' + sentence.toLowerCase() + '?';
+    }
+
+    function generateDomainItems(text) {
+        const lower = text.toLowerCase();
+        const items = [];
+
+        // Domínios comuns de POPs brasileiros
+        const domains = [
+            { kw: ['temperatura', 'frio', 'refriger', 'geladeira', 'freezer'], q: 'A temperatura do equipamento está dentro dos limites estabelecidos?', s: 'Crítico' },
+            { kw: ['validade', 'vencimento', 'vencer'], q: 'Os produtos com data de validade foram verificados e os vencidos recolhidos?', s: 'Crítico' },
+            { kw: ['epi', 'luvas', 'touca', 'avental', 'protecao'], q: 'Os EPIs obrigatórios (luvas, touca, avental) estão sendo utilizados corretamente?', s: 'Crítico' },
+            { kw: ['higieniza', 'sanitiz', 'desinfec', 'alcool', 'cloro'], q: 'A higienização e sanitização da área foi realizada conforme o procedimento?', s: 'Médio' },
+            { kw: ['armazenamento', 'armazenar', 'estoque', 'prateleira'], q: 'Os produtos estão armazenados de acordo com as especificações do fabricante?', s: 'Médio' },
+            { kw: ['registro', 'planilha', 'controle', 'formulario'], q: 'Os registros e planilhas de controle foram preenchidos corretamente?', s: 'Médio' },
+            { kw: ['peps', 'fifo', 'rotatividade', 'primeiro que entra'], q: 'O sistema PEPS (primeiro que entra, primeiro que sai) está sendo aplicado?', s: 'Médio' },
+            { kw: ['limpeza', 'limpar', 'varrido', 'piso', 'bancada'], q: 'A limpeza geral da área está dentro do padrão estabelecido?', s: 'Médio' },
+            { kw: ['uniforme', 'roupa', 'vestimenta', 'padrao visual'], q: 'Os colaboradores estão com uniformes completos e em boas condições?', s: 'Leve' },
+            { kw: ['etiqueta', 'identificacao', 'label', 'preco'], q: 'Os produtos estão corretamente identificados e etiquetados?', s: 'Leve' },
+        ];
+
+        domains.forEach(({ kw, q, s }) => {
+            if (kw.some(k => lower.includes(k))) {
+                items.push({ question: q, severity: s });
+            }
+        });
+
+        return items;
+    }
+
+    // Manter Gemini como opção avançada
     async function processFileWithGemini(file) {
         const apiKey = db.config.gemini_key;
         const reader = new FileReader();
@@ -3319,7 +3537,6 @@ const _genChecksum = (str) => {
         RETORNE O RESULTADO ESTRITAMENTE COMO UM ARRAY JSON DE OBJETOS.
         Exemplo de formato: [{"question": "O produto está dentro da validade?", "severity": "Crítico"}, {"question": "Piso está varrido?", "severity": "Leve"}]`;
 
-        // Normalizar MIME Type para o Gemini
         let mimeType = file.type || "image/jpeg";
         if (file.name.toLowerCase().endsWith('.pdf')) mimeType = "application/pdf";
         if (file.name.toLowerCase().endsWith('.png')) mimeType = "image/png";
@@ -3346,10 +3563,10 @@ const _genChecksum = (str) => {
             throw new Error(err.error?.message || 'Erro desconhecido na API do Gemini');
         }
 
+        const result = await response.json();
         let content = result.candidates[0].content.parts[0].text;
         
         try {
-            // Limpeza de blocos de código Markdown se existirem
             content = content.replace(/```json/g, '').replace(/```/g, '').trim();
             return JSON.parse(content);
         } catch (e) {

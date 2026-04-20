@@ -29,6 +29,8 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <!-- PDF.js para leitura de POPs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- Tesseract.js para OCR local de imagens -->
+    <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="styles.css">
@@ -1308,9 +1310,10 @@ FOR ALL USING (true) WITH CHECK (true);</pre>
                 </div>
             </div>
             <div id="ai-step-processing" class="hidden" style="text-align: center; padding: 40px 0;">
-                <div class="ph-spinner ph-spin" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></div>
+                <div style="width: 60px; height: 60px; border: 4px solid rgba(239,68,68,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
                 <h3>Analisando Documento...</h3>
-                <p style="color: var(--text-muted); margin-top: 8px;">A IA está lendo o conteúdo e estruturando o seu checklist.</p>
+                <p id="ai-processing-msg" style="color: var(--text-muted); margin-top: 8px;">Extraindo texto do documento...</p>
+                <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 12px; opacity: 0.6;">Processamento local — sem Internet, sem custo.</p>
             </div>
             <div id="ai-step-review" class="hidden">
                 <h3 style="margin-bottom: 16px;">Itens Extraídos</h3>
