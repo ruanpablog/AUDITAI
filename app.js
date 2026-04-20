@@ -1039,37 +1039,146 @@ const _genChecksum = (str) => {
         const pop = db.pops.find(p => p.id === popId);
         if (!pop) return;
 
-        // Guardar o POP atual para o modal de ciência
         window.activePopAwareness = pop;
 
-        // Resetar o modal de ciência
         const modal = document.getElementById('modal-pop-awareness');
-        const check = document.getElementById('pop-awareness-check');
+        const nameInput = document.getElementById('awareness-auditor-name');
         const btn = document.getElementById('btn-start-audit-final');
-        
-        check.checked = false;
-        btn.disabled = true;
-        modal.classList.remove('hidden');
+        const canvas = document.getElementById('signature-canvas');
 
-        // Configurar botão de visualização do POP no modal
+        // Resetar o modal
+        if (nameInput) nameInput.value = '';
+        if (btn) btn.disabled = true;
+        window._signatureDone = false;
+        window.clearSignature();
+        updateAwarenessStatus(false, false);
+
+        // Configurar botão de visualização do POP
         const btnView = document.getElementById('btn-view-pop-awareness');
-        if (pop.fileData) {
-            btnView.style.display = 'block';
-            btnView.onclick = () => window.viewAttachedDoc(pop.fileData, pop.name);
-        } else {
-            btnView.style.display = 'none';
+        if (btnView) {
+            if (pop.fileData) {
+                btnView.style.display = 'block';
+                btnView.onclick = () => window.viewAttachedDoc(pop.fileData, pop.name);
+            } else {
+                btnView.style.display = 'none';
+            }
         }
 
-        // Habilitar botão ao marcar checkbox
-        check.onchange = () => {
-            btn.disabled = !check.checked;
-        };
+        // Inicializar canvas de assinatura
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            let drawing = false;
+            let lastX = 0, lastY = 0;
+
+            function getPos(e, el) {
+                const rect = el.getBoundingClientRect();
+                const scaleX = el.width / rect.width;
+                const scaleY = el.height / rect.height;
+                if (e.touches) {
+                    return [(e.touches[0].clientX - rect.left) * scaleX, (e.touches[0].clientY - rect.top) * scaleY];
+                }
+                return [(e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY];
+            }
+
+            function startDraw(e) { 
+                e.preventDefault();
+                drawing = true; 
+                [lastX, lastY] = getPos(e, canvas); 
+                ctx.beginPath(); 
+                ctx.moveTo(lastX, lastY);
+            }
+            function draw(e) { 
+                if (!drawing) return; 
+                e.preventDefault();
+                const [x, y] = getPos(e, canvas);
+                ctx.lineTo(x, y); 
+                ctx.stroke(); 
+                lastX = x; lastY = y;
+                // Marcar assinatura como feita
+                if (!window._signatureDone) {
+                    window._signatureDone = true;
+                    updateAwarenessStatus(nameInput.value.trim().length > 2, true);
+                }
+            }
+            function stopDraw() { drawing = false; }
+
+            // Limpar eventos antigos clonando o elemento
+            const newCanvas = canvas.cloneNode(true);
+            canvas.parentNode.replaceChild(newCanvas, canvas);
+            const freshCtx = newCanvas.getContext('2d');
+            freshCtx.strokeStyle = '#ef4444';
+            freshCtx.lineWidth = 2.5;
+            freshCtx.lineCap = 'round';
+            freshCtx.lineJoin = 'round';
+            window._sigCtx = freshCtx;
+            window._sigCanvas = newCanvas;
+            window._signatureDone = false;
+
+            newCanvas.addEventListener('mousedown', e => { 
+                e.preventDefault(); drawing = true; 
+                const rect = newCanvas.getBoundingClientRect();
+                lastX = (e.clientX - rect.left) * (newCanvas.width / rect.width);
+                lastY = (e.clientY - rect.top) * (newCanvas.height / rect.height);
+                freshCtx.beginPath(); freshCtx.moveTo(lastX, lastY); 
+            });
+            newCanvas.addEventListener('mousemove', e => {
+                if (!drawing) return;
+                const rect = newCanvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (newCanvas.width / rect.width);
+                const y = (e.clientY - rect.top) * (newCanvas.height / rect.height);
+                freshCtx.lineTo(x, y); freshCtx.stroke();
+                lastX = x; lastY = y;
+                window._signatureDone = true;
+                updateAwarenessStatus(nameInput.value.trim().length > 2, true);
+            });
+            newCanvas.addEventListener('mouseup', () => drawing = false);
+            newCanvas.addEventListener('mouseleave', () => drawing = false);
+
+            newCanvas.addEventListener('touchstart', e => {
+                e.preventDefault(); drawing = true;
+                const rect = newCanvas.getBoundingClientRect();
+                lastX = (e.touches[0].clientX - rect.left) * (newCanvas.width / rect.width);
+                lastY = (e.touches[0].clientY - rect.top) * (newCanvas.height / rect.height);
+                freshCtx.beginPath(); freshCtx.moveTo(lastX, lastY);
+            }, { passive: false });
+            newCanvas.addEventListener('touchmove', e => {
+                if (!drawing) return; e.preventDefault();
+                const rect = newCanvas.getBoundingClientRect();
+                const x = (e.touches[0].clientX - rect.left) * (newCanvas.width / rect.width);
+                const y = (e.touches[0].clientY - rect.top) * (newCanvas.height / rect.height);
+                freshCtx.lineTo(x, y); freshCtx.stroke();
+                lastX = x; lastY = y;
+                window._signatureDone = true;
+                updateAwarenessStatus(nameInput.value.trim().length > 2, true);
+            }, { passive: false });
+            newCanvas.addEventListener('touchend', () => drawing = false);
+        }
+
+        modal.classList.remove('hidden');
 
         // Ação Final de Início
         btn.onclick = () => {
+            const auditorName = document.getElementById('awareness-auditor-name').value.trim();
+            if (auditorName.length < 2) {
+                document.getElementById('awareness-auditor-name').focus();
+                return;
+            }
+            if (!window._signatureDone) {
+                alert('Por favor, realize sua assinatura no campo indicado.');
+                return;
+            }
+
             modal.classList.add('hidden');
-            
-            // Iniciar de fato a auditoria
+
+            // Capturar imagem da assinatura
+            const sigImage = window._sigCanvas ? window._sigCanvas.toDataURL() : null;
+
             currentAudit = {
                 id: 'aud_pop_' + Date.now(),
                 storeId: selectedStoreId || (db.stores.length > 0 ? db.stores[0].id : null),
@@ -1077,8 +1186,10 @@ const _genChecksum = (str) => {
                 type: 'pop',
                 popId: pop.id,
                 popName: pop.name,
+                auditor: auditorName,
                 popAwarenessConfirmed: true,
                 popAwarenessTimestamp: new Date().toISOString(),
+                popAwarenessSignature: sigImage,
                 auditorIdBase: currentUser ? currentUser.id : 'anon',
                 departments: []
             };
@@ -1096,16 +1207,16 @@ const _genChecksum = (str) => {
             }
 
             activeDeptId = dept.id;
-            deptResponsibleName = "";
+            deptResponsibleName = auditorName;
 
             switchSection('audit-flow');
             document.querySelectorAll('.audit-step').forEach(s => s.classList.add('hidden'));
             document.getElementById('step-3').classList.remove('hidden');
-            
+
             const store = db.stores.find(s => s.id === currentAudit.storeId);
             const storeTitle = document.getElementById('current-store-title-step3');
             if (storeTitle) storeTitle.innerText = store ? store.name : 'Loja';
-            
+
             const deptTitle = document.getElementById('current-dept-title');
             if (deptTitle) deptTitle.innerText = pop.name;
 
@@ -1114,11 +1225,13 @@ const _genChecksum = (str) => {
                 badgeContainer.innerHTML = `
                     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
                         <span class="badge badge-primary" style="padding:6px 12px; font-size:0.75rem;"><i class="ph ph-file-text"></i> PROCEDIMENTO (POP)</span>
-                        <button class="btn btn-outline btn-xs" onclick="window.viewAttachedDoc('${pop.fileData ? pop.fileData : ''}', '${pop.name}')" style="font-size:0.65rem;">
-                            <i class="ph ph-eye"></i> Ver POP Original
-                        </button>
+                        ${pop.fileData ? `<button class="btn btn-outline btn-xs" onclick="window.viewAttachedDoc('${pop.fileData ? 'pop_file_ref' : ''}', '${pop.name}')" style="font-size:0.65rem;"><i class="ph ph-eye"></i> Ver POP Original</button>` : ''}
                     </div>
                 `;
+                if (pop.fileData) {
+                    const b = badgeContainer.querySelector('button');
+                    if (b) b.onclick = () => window.viewAttachedDoc(pop.fileData, pop.name);
+                }
             }
 
             const popItems = db.checklistItems.filter(item => pop.items.includes(item.id));
@@ -1129,6 +1242,39 @@ const _genChecksum = (str) => {
             renderQuestions(popItems, pop.name);
             updateProgressBar(0.8);
         };
+    };
+
+    function updateAwarenessStatus(hasName, hasSig) {
+        const nameStatus = document.getElementById('status-name');
+        const sigStatus = document.getElementById('status-sig');
+        const btn = document.getElementById('btn-start-audit-final');
+        if (nameStatus) {
+            nameStatus.innerHTML = hasName 
+                ? '<i class="ph ph-check-circle" style="color:#10b981;"></i> Nome confirmado'
+                : '<i class="ph ph-circle" style="color:var(--text-muted);"></i> Nome não preenchido';
+        }
+        if (sigStatus) {
+            sigStatus.innerHTML = hasSig 
+                ? '<i class="ph ph-check-circle" style="color:#10b981;"></i> Assinatura realizada'
+                : '<i class="ph ph-circle" style="color:var(--text-muted);"></i> Assinatura não realizada';
+        }
+        if (btn) btn.disabled = !(hasName && hasSig);
+    }
+
+    window.checkAwarenessReady = function() {
+        const name = document.getElementById('awareness-auditor-name').value.trim();
+        updateAwarenessStatus(name.length > 2, window._signatureDone || false);
+    };
+
+    window.clearSignature = function() {
+        const canvas = window._sigCanvas || document.getElementById('signature-canvas');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        window._signatureDone = false;
+        const name = document.getElementById('awareness-auditor-name');
+        updateAwarenessStatus(name && name.value.trim().length > 2, false);
     };
 
     window.viewAttachedDoc = function(fileData, title) {

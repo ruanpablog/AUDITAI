@@ -1392,35 +1392,68 @@ FOR ALL USING (true) WITH CHECK (true);</pre>
     </div>
 
     <!-- Modal: Termo de Ciência do POP -->
-    <div id="modal-pop-awareness" class="modal-overlay hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; display:flex; align-items:center; justify-content:center;">
-        <div class="glass modal" style="max-width: 500px; padding: 32px; text-align: center;">
-            <div style="background: rgba(239, 68, 68, 0.1); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
-                <i class="ph ph-shield-check" style="font-size: 3rem; color: var(--primary);"></i>
-            </div>
-            <h2 style="margin-bottom: 12px; font-family: var(--font-heading);">Trava de Conformidade</h2>
-            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px; line-height: 1.5;">
-                Para iniciar esta operação, você deve confirmar que possui conhecimento pleno dos procedimentos estabelecidos.
-            </p>
+    <div id="modal-pop-awareness" class="modal-overlay hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; display:flex; align-items:center; justify-content:center; padding: 20px;">
+        <div class="glass" style="max-width: 540px; width: 100%; padding: 32px; border-radius: 16px; border: 1px solid rgba(239,68,68,0.3);">
             
-            <div class="glass" style="padding: 20px; text-align: left; margin-bottom: 24px; border-left: 4px solid var(--primary);">
-                <p style="font-size: 0.9rem; font-weight: 500; font-style: italic; color: var(--text-body);">
-                    "Confirmo que li e estou ciente das normas estabelecidas no POP anexo para esta operação, responsabilizando-me pela correta execução das tarefas."
+            <!-- Cabeçalho -->
+            <div style="display:flex; align-items:center; gap:16px; margin-bottom: 20px;">
+                <div style="background: rgba(239,68,68,0.15); width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i class="ph ph-shield-warning" style="font-size:2rem; color:var(--primary);"></i>
+                </div>
+                <div>
+                    <h2 style="font-size:1.3rem; margin-bottom:4px;">Confirmação de Ciência</h2>
+                    <p style="color:var(--text-muted); font-size:0.85rem;">Esta ação é obrigatória antes de iniciar a auditoria</p>
+                </div>
+            </div>
+
+            <!-- Termo -->
+            <div style="background: rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); border-radius:10px; padding:16px; margin-bottom:20px;">
+                <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.7; font-style:italic;">
+                    "Confirmo que fui devidamente orientado(a) e estou ciente de todos os procedimentos, normas e responsabilidades estabelecidas no POP vinculado a esta operação. Comprometo-me a seguir rigorosamente os critérios estabelecidos durante a execução desta auditoria."
                 </p>
             </div>
 
-            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 32px;">
-                <input type="checkbox" id="pop-awareness-check" style="width: 22px; height: 22px; cursor: pointer;">
-                <label for="pop-awareness-check" style="font-weight: 600; cursor: pointer;">Li e aceito os termos</label>
+            <!-- Botão ver POP -->
+            <button class="btn btn-ghost btn-sm" id="btn-view-pop-awareness" style="color:var(--primary); font-size:0.8rem; margin-bottom:20px; display:none;">
+                <i class="ph ph-file-pdf"></i> Visualizar o Documento POP antes de prosseguir
+            </button>
+
+            <!-- Campo de Nome -->
+            <div class="form-group" style="margin-bottom:16px;">
+                <label style="font-size:0.8rem; color:var(--text-muted); margin-bottom:6px; display:block;">
+                    <i class="ph ph-identification-badge"></i> NOME COMPLETO DO AUDITOR *
+                </label>
+                <input type="text" id="awareness-auditor-name" placeholder="Digite seu nome completo para confirmar" 
+                    style="border: 1px solid rgba(239,68,68,0.3); background:rgba(0,0,0,0.2);" 
+                    oninput="window.checkAwarenessReady()">
             </div>
 
-            <div style="display: flex; gap: 12px;">
-                <button class="btn btn-outline" style="flex:1;" onclick="document.getElementById('modal-pop-awareness').classList.add('hidden')">Cancelar</button>
-                <button class="btn btn-primary" style="flex:1;" id="btn-start-audit-final" disabled>Iniciar Auditoria <i class="ph ph-play"></i></button>
+            <!-- Assinatura Virtual -->
+            <div style="margin-bottom: 20px;">
+                <label style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+                    <span><i class="ph ph-pen-nib"></i> ASSINATURA VIRTUAL *</span>
+                    <button onclick="window.clearSignature()" style="background:none; border:none; color:var(--text-muted); font-size:0.75rem; cursor:pointer; text-decoration:underline;">Limpar</button>
+                </label>
+                <canvas id="signature-canvas" width="476" height="130" 
+                    style="width:100%; height:130px; background:rgba(0,0,0,0.3); border:2px dashed rgba(255,255,255,0.15); border-radius:8px; cursor:crosshair; touch-action:none; display:block;">
+                </canvas>
+                <p style="font-size:0.7rem; color:var(--text-muted); margin-top:6px; text-align:center;">Assine com o mouse ou dedo no campo acima</p>
             </div>
-            
-            <button class="btn btn-ghost btn-sm" id="btn-view-pop-awareness" style="margin-top: 16px; color: var(--primary); font-size: 0.8rem;">
-                <i class="ph ph-file-pdf"></i> Visualizar Documento Original
-            </button>
+
+            <!-- Status -->
+            <div id="awareness-status" style="display:flex; gap:16px; font-size:0.75rem; color:var(--text-muted); margin-bottom:20px; justify-content:center;">
+                <span id="status-name" style="display:flex; align-items:center; gap:4px;"><i class="ph ph-circle" style="color:var(--text-muted);"></i> Nome não preenchido</span>
+                <span id="status-sig" style="display:flex; align-items:center; gap:4px;"><i class="ph ph-circle" style="color:var(--text-muted);"></i> Assinatura não realizada</span>
+            </div>
+
+            <!-- Botões -->
+            <div style="display:flex; gap:12px;">
+                <button class="btn btn-outline" style="flex:1;" onclick="document.getElementById('modal-pop-awareness').classList.add('hidden')">Cancelar</button>
+                <button class="btn btn-primary" style="flex:1;" id="btn-start-audit-final" disabled>
+                    <i class="ph ph-play"></i> Iniciar Auditoria
+                </button>
+            </div>
+
         </div>
     </div>
 
