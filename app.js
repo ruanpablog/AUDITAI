@@ -2630,6 +2630,43 @@ const _genChecksum = (str) => {
         }
 
         const tbody = document.getElementById('dash-ranking-table-body');
+        const podiumContainer = document.getElementById('dash-podium-container');
+
+        if (podiumContainer) {
+            podiumContainer.innerHTML = '';
+            if (sortedStores.length > 0) {
+                // Preparar dados do pódio (2º, 1º, 3º) para o layout visual
+                const podiumOrder = [];
+                if (sortedStores[1]) podiumOrder.push({ ...sortedStores[1], pos: 2 });
+                if (sortedStores[0]) podiumOrder.push({ ...sortedStores[0], pos: 1 });
+                if (sortedStores[2]) podiumOrder.push({ ...sortedStores[2], pos: 3 });
+
+                podiumOrder.forEach(p => {
+                    const storeObj = db.stores.find(x => x.name === p[0]);
+                    const manager = storeObj ? storeObj.managerName : 'Encarregado';
+                    const isFirst = p.pos === 1;
+                    const h = isFirst ? '180px' : (p.pos === 2 ? '140px' : '110px');
+                    const color = isFirst ? '#facc15' : (p.pos === 2 ? '#94a3b8' : '#cd7f32'); // Gold, Silver, Bronze
+                    const medal = isFirst ? '🥇' : (p.pos === 2 ? '🥈' : '🥉');
+
+                    const podiumBox = document.createElement('div');
+                    podiumBox.style = `display:flex; flex-direction:column; align-items:center; width:150px; animation: fadeInUp ${0.3 + p.pos * 0.2}s ease forwards; opacity:0;`;
+                    podiumBox.innerHTML = `
+                        <div style="font-size: 2.5rem; margin-bottom: 8px;">${medal}</div>
+                        <div style="text-align:center; margin-bottom:12px;">
+                            <div style="font-weight:900; color:white; font-size:1.1rem; line-height:1.2;">${p[0]}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">${manager}</div>
+                        </div>
+                        <div style="background:linear-gradient(to top, rgba(255,255,255,0.05), rgba(255,255,255,0.1)); width:100%; height:${h}; border-radius:12px 12px 0 0; display:flex; flex-direction:column; justify-content:center; align-items:center; border:1px solid rgba(255,255,255,0.1); border-bottom:none;">
+                            <span style="font-size:1.8rem; font-weight:900; color:${color};">${p[1].score}%</span>
+                            <span style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:bold;">Média Final</span>
+                        </div>
+                    `;
+                    podiumContainer.appendChild(podiumBox);
+                });
+            }
+        }
+
         if (tbody) {
             if (sortedStores.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum dado disponível.</td></tr>';
@@ -2637,11 +2674,12 @@ const _genChecksum = (str) => {
                 tbody.innerHTML = sortedStores.map((s, i) => {
                     const storeObj = db.stores.find(x => x.name === s[0]);
                     const manager = storeObj && storeObj.managerName ? `<br><small style="color:var(--text-muted); font-weight:400;">Gestor: ${storeObj.managerName}</small>` : '';
+                    const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
                     return `
                         <tr>
-                            <td><span class="badge ${i < 3 ? 'badge-success' : 'badge-ghost'}">${i + 1}º</span></td>
+                            <td><span class="badge ${i < 3 ? 'badge-success' : 'badge-ghost'}" style="${i < 3 ? 'font-size:1rem; padding:4px 10px;' : ''}">${medal} ${i + 1}º</span></td>
                             <td><strong>${s[0]}</strong>${manager}</td>
-                            <td style="font-weight: 600; color: ${s[1].score >= 80 ? 'var(--success)' : (s[1].score >= 60 ? 'var(--warning)' : 'var(--danger)')}">${s[1].score}%</td>
+                            <td style="font-weight: 800; font-size: 1.1rem; color: ${s[1].score >= 80 ? '#10b981' : (s[1].score >= 60 ? '#f59e0b' : '#ef4444')}">${s[1].score}%</td>
                         </tr>
                     `;
                 }).join('');
