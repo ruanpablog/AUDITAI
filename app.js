@@ -2464,6 +2464,7 @@ const _genChecksum = (str) => {
     // ==========================================
     let dashChartEvo = null;
     let dashChartDept = null;
+    let dashChartHistory = null;
 
     function renderDashboard() {
         // Initialize default dates if empty
@@ -2528,6 +2529,7 @@ const _genChecksum = (str) => {
         renderCharts(filteredAudits, storeFilter);
         renderRanking(filteredAudits);
         renderClassificationChart(filteredAudits);
+        renderEvolutionRanking(filteredAudits);
         populateDashboardStores();
     }
 
@@ -2902,6 +2904,145 @@ const _genChecksum = (str) => {
             },
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } }
         });
+
+        // --- NOVO: Histórico Comparativo (Aba Evolução) ---
+        const ctxHist = document.getElementById('chart-history');
+        if (dashChartHistory) dashChartHistory.destroy();
+        if (ctxHist) {
+            const dailyData = {};
+            audits.forEach(a => {
+                const d = new Date(a.date).toLocaleDateString('pt-BR');
+                if(!dailyData[d]) dailyData[d] = { total: 0, count: 0 };
+                dailyData[d].total += a.percentage;
+                dailyData[d].count++;
+            });
+
+            const sortedDates = Object.keys(dailyData).sort((a,b) => {
+                const [d1, m1, y1] = a.split('/');
+                const [d2, m2, y2] = b.split('/');
+                return new Date(y1, m1-1, d1) - new Date(y2, m2-1, d2);
+            });
+
+            const avgScores = sortedDates.map(d => Math.round(dailyData[d].total / dailyData[d].count));
+
+            dashChartHistory = new Chart(ctxHist, {
+                type: 'line',
+                data: {
+                    labels: sortedDates,
+                    datasets: [{
+                        label: 'Média Geral da Rede (%)',
+                        data: avgScores,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#10b981'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { min: 0, max: 100, ticks: { callback: v => v + '%' } }
+                    },
+                    plugins: {
+                        tooltip: { mode: 'index', intersect: false }
+                    }
+                }
+            });
+        }
+    }
+
+    function renderEvolutionRanking(audits) {
+        const tbody = document.getElementById('dash-evo-ranking-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        const results = [];
+        const monthAvg = { total: 0, count: 0 };
+
+        db.stores.forEach(store => {
+            const storeAudits = db.audits
+                .filter(a => a.storeId === store.id)
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (storeAudits.length >= 2) {
+                const latest = storeAudits[0].percentage;
+                const previous = storeAudits[1].percentage;
+                const evolution = latest - previous;
+                
+                results.push({
+                    storeName: store.name,
+                    latest: latest,
+                    evolution: evolution
+                });
+
+                monthAvg.total += evolution;
+                monthAvg.count++;
+            } else if (storeAudits.length === 1) {
+                results.push({
+                    storeName: store.name,
+                    latest: storeAudits[0].percentage,
+                    evolution: 0
+                });
+            }
+        });
+
+        // Ordenar por maior evolução
+        const sorted = results.sort((a, b) => b.evolution - a.evolution);
+
+        sorted.forEach((res, idx) => {
+            const evoColor = res.evolution > 0 ? '#10b981' : (res.evolution < 0 ? '#ef4444' : 'var(--text-muted)');
+            const evoIcon = res.evolution > 0 ? 'ph-trend-up' : (res.evolution < 0 ? 'ph-trend-down' : 'ph-minus');
+            const evoText = res.evolution > 0 ? `+${res.evolution}%` : `${res.evolution}%`;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="text-align:center; font-weight:bold;">${idx + 1}º</td>
+                <td><strong>${res.storeName}</strong></td>
+                <td style="text-align:center;">${res.latest}%</td>
+                <td style="text-align:center; color:${evoColor}; font-weight:bold;">
+                    <i class="ph ${evoIcon}"></i> ${evoText}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Líder e Média
+        const leader = sorted[0];
+        document.getElementById('evo-leader-display').innerText = leader ? leader.storeName : '--';
+        
+        const avg = monthAvg.count > 0 ? (monthAvg.total / monthAvg.count).toFixed(1) : 0;
+        const avgEl = document.getElementById('evo-avg-display');
+        if(avgEl) {
+            avgEl.innerText = (avg > 0 ? "+" : "") + avg + "%";
+            avgEl.style.color = avg >= 0 ? "#10b981" : "#ef4444";
+        }
+
+        // Gráfico de Evolução Comparativa (Novas vs Antigas)
+        const ctxEvoComp = document.getElementById('chart-evo-comparison');
+        if (dashChartEvoRanking) dashChartEvoRanking.destroy();
+        if (ctxEvoComp && sorted.length > 0) {
+            dashChartEvoRanking = new Chart(ctxEvoComp, {
+                type: 'bar',
+                data: {
+                    labels: sorted.slice(0, 8).map(r => r.storeName),
+                    datasets: [{
+                        label: 'Ganho/Perda de Pontos (%)',
+                        data: sorted.slice(0, 8).map(r => r.evolution),
+                        backgroundColor: sorted.slice(0, 8).map(r => r.evolution >= 0 ? 'rgba(16, 185, 129, 0.6)' : 'rgba(239, 68, 68, 0.6)'),
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+        }
     }
 
         function renderAuditHistory() {
