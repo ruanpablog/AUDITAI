@@ -485,7 +485,7 @@
                 <div id="dash-evo-ranking" class="tab-content">
                     <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-bottom: 24px;">
                         <div class="glass" style="padding:20px; text-align: center;">
-                            <h3 style="margin-bottom:12px; font-size:1.1rem; color: var(--accent);">🏆 Líder de Evolução (Mês)</h3>
+                            <h3 style="margin-bottom:12px; font-size:1.1rem; color: var(--accent);">🏆 Gerente Destaque (Evolução)</h3>
                             <div id="evo-leader-display" style="font-size: 1.5rem; font-weight: 700; color: var(--text-heading);">--</div>
                             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">A maior melhoria contínua</p>
                         </div>
@@ -497,8 +497,8 @@
                     </div>
                     <div class="form-row">
                         <div class="glass" style="padding:20px; flex: 2; min-height: 350px;">
-                            <h3 style="margin-bottom:16px; font-size:1.1rem;"><i class="ph ph-chart-line-up"></i> Evolução Comparativa de Performance</h3>
-                            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Desempenho mensal consolidado por unidade (Evolução de Notas)</p>
+                            <h3 style="margin-bottom:16px; font-size:1.1rem;"><i class="ph ph-chart-line-up"></i> Evolução de Desempenho por Gestor</h3>
+                            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Comparativo de crescimento (%) entre o mês atual e o anterior por Gerente</p>
                             <div style="position:relative; height: 300px; width: 100%;">
                                 <canvas id="chart-evo-comparison"></canvas>
                             </div>
@@ -511,9 +511,9 @@
                                     <thead>
                                         <tr>
                                             <th>Posição</th>
-                                            <th>Loja/Gerente</th>
-                                            <th>Nota Atual</th>
-                                            <th>Evolução</th>
+                                            <th>Gerente</th>
+                                            <th>Performance</th>
+                                            <th>Evolução (%)</th>
                                         </tr>
                                     </thead>
                                     <tbody id="dash-evo-ranking-table-body">

@@ -2704,15 +2704,22 @@ const _genChecksum = (str) => {
         let totalEvo = 0;
         let countEvo = 0;
 
-        db.stores.forEach(store => {
-            const storeAudits = db.audits.filter(a => a.storeId === store.id);
+        // Agrupar por Gerentes únicos
+        const managers = [...new Set(db.stores.map(s => s.managerName).filter(Boolean))];
+
+        managers.forEach(mgrName => {
+            // Encontrar todas as lojas desse gerente
+            const managerStores = db.stores.filter(s => s.managerName === mgrName).map(s => s.id);
             
-            const thisMonthAudits = storeAudits.filter(a => {
+            // Coletar todas as auditorias das lojas desse gerente
+            const managerAudits = db.audits.filter(a => managerStores.includes(a.storeId));
+            
+            const thisMonthAudits = managerAudits.filter(a => {
                 const d = new Date(a.date);
                 return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
             });
 
-            const prevMonthAudits = storeAudits.filter(a => {
+            const prevMonthAudits = managerAudits.filter(a => {
                 const d = new Date(a.date);
                 return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear;
             });
@@ -2721,15 +2728,15 @@ const _genChecksum = (str) => {
                 const avgThis = thisMonthAudits.reduce((sum, a) => sum + a.percentage, 0) / thisMonthAudits.length;
                 const avgPrev = prevMonthAudits.reduce((sum, a) => sum + a.percentage, 0) / prevMonthAudits.length;
                 
-                const evoRate = avgPrev > 0 ? ((avgThis - avgPrev) / avgPrev) * 100 : 0;
+                const evoPoints = avgThis - avgPrev;
 
                 evolutionData.push({
-                    name: store.name,
+                    name: mgrName,
                     currentScore: Math.round(avgThis),
                     prevScore: Math.round(avgPrev),
-                    evoRate: parseFloat(evoRate.toFixed(1))
+                    evoRate: parseFloat(evoPoints.toFixed(1))
                 });
-                totalEvo += evoRate;
+                totalEvo += evoPoints;
                 countEvo++;
             }
         });
@@ -2745,12 +2752,11 @@ const _genChecksum = (str) => {
                 const evoColor = item.evoRate > 0 ? 'var(--success)' : (item.evoRate < 0 ? 'var(--danger)' : 'var(--text-muted)');
                 const evoIcon = item.evoRate > 0 ? 'ph-trend-up' : (item.evoRate < 0 ? 'ph-trend-down' : 'ph-minus');
                 
-                const storeObj = db.stores.find(x => x.name === item.name);
-                const manager = storeObj && storeObj.managerName ? `<br><small style="color:var(--text-muted); font-weight:400;">Gestor: ${storeObj.managerName}</small>` : '';
+                const mgrStores = db.stores.filter(s => s.managerName === item.name).map(s => s.name).join(', ');
 
                 tr.innerHTML = `
                     <td><span class="badge ${idx < 3 ? 'badge-accent' : 'badge-ghost'}">${idx + 1}º</span></td>
-                    <td><div style="font-weight:600;">${item.name}</div>${manager}</td>
+                    <td><div style="font-weight:600;">${item.name}</div><small style="color:var(--text-muted);">Lojas: ${mgrStores}</small></td>
                     <td>${item.currentScore}%</td>
                     <td><span style="color:${evoColor}; font-weight:700;"><i class="ph ${evoIcon}"></i> ${item.evoRate > 0 ? '+' : ''}${item.evoRate}%</span></td>
                 `;
@@ -2777,27 +2783,27 @@ const _genChecksum = (str) => {
             monthLabels.push(d.toLocaleDateString('pt-BR', { month: 'short' }));
         }
 
-        const datasets = db.stores.slice(0, 5).map((store, idx) => {
+        const managersList = [...new Set(db.stores.map(s => s.managerName).filter(Boolean))];
+        const datasets = managersList.slice(0, 5).map((mgrName, idx) => {
             const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-            const data = [];
-            for(let i=5; i>=0; i--) {
-                const target = new Date();
-                target.setMonth(now.getMonth() - i);
-                const m = target.getMonth();
-                const y = target.getFullYear();
-                
-                const monthAudits = db.audits.filter(a => {
+            const mgrStores = db.stores.filter(s => s.managerName === mgrName).map(s => s.id);
+            const data = monthLabels.map((_, mIdx) => {
+                const targetDate = new Date();
+                targetDate.setMonth(now.getMonth() - (5 - mIdx));
+                const m = targetDate.getMonth();
+                const y = targetDate.getFullYear();
+
+                const mAudits = db.audits.filter(a => {
                     const ad = new Date(a.date);
-                    return ad.getMonth() === m && ad.getFullYear() === y && a.storeId === store.id;
+                    return ad.getMonth() === m && ad.getFullYear() === y && mgrStores.includes(a.storeId);
                 });
-                if (monthAudits.length > 0) {
-                    data.push(monthAudits.reduce((s, a) => s + a.percentage, 0) / monthAudits.length);
-                } else {
-                    data.push(null);
-                }
-            }
+
+                if (mAudits.length === 0) return null;
+                return Math.round(mAudits.reduce((sum, a) => sum + a.percentage, 0) / mAudits.length);
+            });
+
             return {
-                label: store.name,
+                label: mgrName,
                 data: data,
                 borderColor: colors[idx % colors.length],
                 backgroundColor: colors[idx % colors.length],
