@@ -2135,9 +2135,17 @@ const _genChecksum = (str) => {
         
         const typeEl = document.getElementById('report-audit-type');
         if (typeEl) {
-            typeEl.innerText = auditObj.type === 'retorno' ? 'AUDITORIA DE RETORNO' : 'AUDITORIA PADRÃO';
-            typeEl.style.color = auditObj.type === 'retorno' ? 'var(--warning)' : 'var(--text-body)';
+            if (auditObj.type === 'rotina') {
+                typeEl.innerText = 'ROTINA OPERACIONAL';
+                typeEl.style.color = 'var(--secondary)';
+            } else {
+                typeEl.innerText = auditObj.type === 'retorno' ? 'AUDITORIA DE RETORNO' : 'AUDITORIA PADRÃO';
+                typeEl.style.color = auditObj.type === 'retorno' ? 'var(--warning)' : 'var(--text-body)';
+            }
         }
+        
+        // Armazenar tipo para redirecionamento inteligente
+        window._lastReportType = auditObj.type;
         
         // Dados da Empresa e Logo (Lookup via Store ou Usuário)
         const effectiveCompanyId = store?.companyId || currentUser.companyId;
@@ -2473,6 +2481,12 @@ const _genChecksum = (str) => {
         document.body.classList.remove('viewing-report');
         document.getElementById('dashboard-view').classList.remove('hidden');
         document.querySelector('.nav-btn[data-target="dashboard-view"]').click();
+        
+        // Se for rotina, volta para a aba de rotinas
+        if (window._lastReportType === 'rotina') {
+            const rotinaTab = document.querySelector('.tab-btn[data-tab="dash-routine"]');
+            if (rotinaTab) rotinaTab.click();
+        }
     });
 
     // ==========================================
@@ -2567,8 +2581,48 @@ const _genChecksum = (str) => {
         renderRanking(standardAudits);
         renderClassificationChart(standardAudits);
         renderEvolutionRanking(standardAudits);
+        renderRoutineHistory(routineAudits); // Renderizar histórico de rotinas
         populateDashboardStores();
     }
+
+    function renderRoutineHistory(routineAudits) {
+        const tbody = document.getElementById('dash-routine-history-table-body');
+        if(!tbody) return;
+        tbody.innerHTML = '';
+
+        if(routineAudits.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhuma rotina registrada.</td></tr>';
+            return;
+        }
+
+        const sorted = routineAudits.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+        tbody.innerHTML = sorted.map(aud => {
+            const store = db.stores.find(s => s.id === aud.storeId);
+            const storeName = store ? store.name : 'Loja';
+            const dateStr = new Date(aud.date).toLocaleDateString('pt-BR');
+            
+            return `
+                <tr>
+                    <td><div style="font-size:0.8rem;">${dateStr}</div></td>
+                    <td><strong>${storeName}</strong></td>
+                    <td>${aud.auditor}</td>
+                    <td><span class="badge ${aud.percentage >= 80 ? 'badge-success' : (aud.percentage >= 60 ? 'badge-warning' : 'badge-danger')}">${aud.percentage}%</span></td>
+                    <td>
+                        <button class="btn btn-ghost btn-sm" onclick="showReportById('${aud.id}')" title="Ver Relatório">
+                            <i class="ph ph-file-text" style="font-size:1.2rem; color:var(--primary);"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Helper global para abrir relatório pelo histórico de rotinas
+    window.showReportById = function(id) {
+        const aud = db.audits.find(a => a.id === id);
+        if(aud) showReport(aud);
+    };
 
     function renderRoutineRanking(routineAudits) {
         const tbody = document.getElementById('dash-routine-ranking-table-body');
@@ -3168,7 +3222,10 @@ const _genChecksum = (str) => {
         if(!tbody) return;
         tbody.innerHTML = '';
         
-        const audits = db.audits.sort((a,b) => new Date(b.date) - new Date(a.date));
+        // FILTRAR: Não mostrar Rotinas no histórico geral de lojas
+        const audits = db.audits
+            .filter(a => a.type !== 'rotina')
+            .sort((a,b) => new Date(b.date) - new Date(a.date));
         
         if (audits.length === 0) {
             tbody.innerHTML = '<tr><td colspan=""6"" style=""text-align:center; padding: 20px; color: var(--text-muted);"">Nenhuma auditoria encontrada.</td></tr>';
