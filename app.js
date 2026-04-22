@@ -871,8 +871,10 @@ const _genChecksum = (str) => {
                     </div>
                 </div>
                 <!-- Titulo e Descrição -->
-                <h3 style="margin: 0 0 10px 0; font-size: 1.3rem; font-weight: 900; color: #f3f4f6; letter-spacing: -0.5px; line-height: 1.2; text-transform: uppercase;">${pop.name}</h3>
-                <p style="font-size: 0.9rem; color: #9ca3af; line-height: 1.5; margin-bottom: 24px; flex: 1;">${pop.description || 'Gerado automaticamente via leitura de documento.'}</p>
+                <div style="margin-bottom: 12px; max-width: 100%;">
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900; color: #f3f4f6; letter-spacing: -0.5px; line-height: 1.3; text-transform: uppercase; word-break: break-word; overflow-wrap: break-word;">${pop.name}</h3>
+                </div>
+                <p style="font-size: 0.85rem; color: #9ca3af; line-height: 1.5; margin-bottom: 24px; flex: 1; word-break: break-word;">${pop.description || 'Gerado automaticamente via leitura de documento.'}</p>
                 
                 <!-- Footer com Divider -->
                 <div style="width: 100%; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; margin-top: auto;">
