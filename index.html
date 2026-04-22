@@ -458,19 +458,19 @@
                     </div>
 
                     <div class="form-row">
-                        <div class="glass" style="padding:20px; flex: 2;">
-                            <h3 style="margin-bottom:16px;font-size:1.1rem;">Ranking de Performance por Filial</h3>
-                            <div style="position:relative; height: 300px; width: 100%;">
+                        <div class="glass" style="padding:20px; flex: 2; display: flex; flex-direction: column;">
+                            <h3 style="margin-bottom:16px;font-size:1.1rem; flex-shrink:0;">Ranking de Performance por Filial</h3>
+                            <div style="flex: 1; position:relative; min-height: 250px; max-height: 350px;">
                                 <canvas id="chart-ranking"></canvas>
                             </div>
                         </div>
-                        <div class="glass" style="padding:20px; flex: 1.5;">
-                            <h3 style="margin-bottom:16px;font-size:1.1rem;">Quadro de Líderes</h3>
-                            <div style="overflow-x: auto;">
+                        <div class="glass" style="padding:20px; flex: 1.5; display: flex; flex-direction: column;">
+                            <h3 style="margin-bottom:16px;font-size:1.1rem; flex-shrink:0;">Quadro de Líderes</h3>
+                            <div style="flex: 1; overflow-x: auto;">
                                 <table class="data-table" style="font-size: 0.85rem;">
                                     <thead>
                                         <tr>
-                                            <th>Posiço</th>
+                                            <th>Posição</th>
                                             <th>Loja</th>
                                             <th>Média</th>
                                         </tr>
@@ -479,6 +479,7 @@
                                         <!-- Populado via JS -->
                                     </tbody>
                                 </table>
+                            </div>
                         </div>
                     </div>
                 </div>
