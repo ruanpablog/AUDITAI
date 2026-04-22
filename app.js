@@ -2804,6 +2804,7 @@ const _genChecksum = (str) => {
         if (podiumContainer) {
             podiumContainer.innerHTML = '';
             if (sortedStores.length > 0) {
+                podiumContainer.style.display = 'flex';
                 // Preparar dados do pódio (2º, 1º, 3º) para o layout visual
                 const podiumOrder = [];
                 if (sortedStores[1]) podiumOrder.push({ ...sortedStores[1], pos: 2 });
@@ -2833,6 +2834,8 @@ const _genChecksum = (str) => {
                     `;
                     podiumContainer.appendChild(podiumBox);
                 });
+            } else {
+                podiumContainer.style.display = 'none'; // Esconder se não houver dados
             }
         }
 
