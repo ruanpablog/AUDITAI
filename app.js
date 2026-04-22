@@ -855,12 +855,18 @@ const _genChecksum = (str) => {
             // Usar estilo premium conforme imagem modelo
             card.style = "display: flex; flex-direction: column; background: #111827; border-radius: 16px; padding: 24px; position: relative; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 25px rgba(0,0,0,0.3); min-height: 300px;";
             
+            const hasFile = !!pop.fileData;
+            const downloadLink = hasFile ? `<button class="btn-download-pop-legacy btn-icon" data-id="${pop.id}" style="background: rgba(255,255,255,0.05); color: #9ca3af; border: none; padding: 8px; border-radius: 8px; cursor: pointer; transition: all 0.2s;" title="Baixar Documento"><i class="ph ph-download-simple" style="font-size: 1.2rem;"></i></button>` : '';
+
             card.innerHTML = `
                 <!-- Icone e Badges -->
                 <div style="display:flex; justify-content:space-between; align-items: flex-start; width:100%; margin-bottom:20px;">
                     <i class="ph-fill ph-file-text" style="font-size: 3rem; color: #ef4444;"></i>
                     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-                        <span style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 4px 12px; border-radius: 20px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; border: 1px solid rgba(245, 158, 11, 0.3);">${pop.recurrence === 'daily' ? 'daily' : pop.recurrence}</span>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            ${downloadLink}
+                            <span style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 4px 12px; border-radius: 20px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; border: 1px solid rgba(245, 158, 11, 0.3);">${pop.recurrence === 'daily' ? 'daily' : pop.recurrence}</span>
+                        </div>
                         <span style="font-size: 0.7rem; font-weight: 800; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px;">${deptName}</span>
                     </div>
                 </div>
@@ -876,6 +882,20 @@ const _genChecksum = (str) => {
                     </button>
                 </div>
             `;
+            
+            if (hasFile) {
+                card.querySelector('.btn-download-pop-legacy').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const link = document.createElement('a');
+                    link.href = pop.fileData;
+                    const extension = pop.fileData.includes('pdf') ? 'pdf' : (pop.fileData.includes('png') ? 'png' : 'jpg');
+                    link.download = `POP_${pop.name.replace(/\s+/g, '_')}.${extension}`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
+            }
+
             grid.appendChild(card);
         });
     }
