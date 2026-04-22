@@ -3536,6 +3536,10 @@ const _genChecksum = (str) => {
         pops.forEach(pop => {
             const dept = db.departments.find(d => d.id === pop.dept_id);
             const tr = document.createElement('tr');
+            
+            const hasFile = !!pop.fileData;
+            const downloadBtn = hasFile ? `<button class="btn btn-ghost btn-sm btn-download-pop" data-id="${pop.id}" title="Baixar Documento"><i class="ph ph-download-simple" style="color:var(--secondary);"></i></button>` : '';
+
             tr.innerHTML = `
                 <td><strong>${pop.name}</strong></td>
                 <td>${dept ? dept.name : 'N/A'}</td>
@@ -3543,12 +3547,25 @@ const _genChecksum = (str) => {
                 <td>${pop.items.length} itens</td>
                 <td>
                     <div style="display:flex; gap:8px;">
-                        <button class="btn btn-ghost btn-sm btn-edit-pop" data-id="${pop.id}"><i class="ph ph-pencil-simple" style="color:var(--primary);"></i></button>
-                        <button class="btn btn-ghost btn-sm btn-delete-pop" data-id="${pop.id}"><i class="ph ph-trash" style="color:var(--danger);"></i></button>
+                        ${downloadBtn}
+                        <button class="btn btn-ghost btn-sm btn-edit-pop" data-id="${pop.id}" title="Editar"><i class="ph ph-pencil-simple" style="color:var(--primary);"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-delete-pop" data-id="${pop.id}" title="Excluir"><i class="ph ph-trash" style="color:var(--danger);"></i></button>
                     </div>
                 </td>
             `;
             
+            if (hasFile) {
+                tr.querySelector('.btn-download-pop').addEventListener('click', () => {
+                    const link = document.createElement('a');
+                    link.href = pop.fileData;
+                    const extension = pop.fileData.includes('pdf') ? 'pdf' : (pop.fileData.includes('png') ? 'png' : 'jpg');
+                    link.download = `POP_${pop.name.replace(/\s+/g, '_')}.${extension}`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
+            }
+
             tr.querySelector('.btn-edit-pop').addEventListener('click', () => window.editPOP(pop.id));
             tr.querySelector('.btn-delete-pop').addEventListener('click', () => window.deletePop(pop.id));
             
