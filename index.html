@@ -643,9 +643,6 @@
                         <h2>Painel Administrativo</h2>
                         <p>Gerencie configurações do sistema</p>
                     </div>
-                    <button class="btn btn-secondary" id="btn-show-bulk-import">
-                        <i class="ph ph-file-arrow-up"></i> Importar Dados (.csv/.xlsx)
-                    </button>
                 </div>
 
                 <div class="tabs" style="flex-wrap: wrap;">
@@ -1161,14 +1158,21 @@
                             <h3 style="margin-bottom: 16px; color: var(--primary);">Gerenciamento de Dados (Migração & Backup)</h3>
                             <p style="color: var(--text-muted); margin-bottom: 24px; line-height: 1.5;">Importe seus dados locais (lojas, checklists, auditorias) para migrar de um ambiente para outro ou restaurar um backup.</p>
                             
-                            <div style="display: flex; gap: 16px; flex-wrap: wrap; background-color: rgba(255,255,255,0.03); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
-                                <div style="flex: 1; min-width: 250px;">
-                                    <h4 style="margin-bottom: 8px;"><i class="ph ph-upload-simple"></i> Importar Dados</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; background-color: rgba(255,255,255,0.03); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+                                <div style="padding-right: 16px; border-right: 1px solid var(--border);">
+                                    <h4 style="margin-bottom: 8px;"><i class="ph ph-upload-simple"></i> Importar Backup (.json)</h4>
                                     <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Restaura os dados de um arquivo exportado anteriormente. <strong style="color:var(--danger)">Subscreve os atuais!</strong></p>
                                     <input type="file" id="db-file-input" accept=".json" style="display: none;">
                                     <button class="btn btn-outline" id="btn-import-db" style="width: 100%;"><i class="ph ph-folder-open"></i> Selecionar Arquivo</button>
                                 </div>
-                                <div style="flex: 1; min-width: 250px; border-left: 1px solid var(--border); padding-left: 16px;">
+                                <div style="padding: 0 16px; border-right: 1px solid var(--border);">
+                                    <h4 style="margin-bottom: 8px; color: var(--primary);"><i class="ph ph-file-spreadsheet"></i> Importação em Massa (.xlsx)</h4>
+                                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Importe várias empresas, lojas e usuários de uma só vez usando uma planilha Excel padrão.</p>
+                                    <button class="btn btn-secondary" id="btn-show-bulk-import" style="width: 100%; background: var(--primary); border:none;">
+                                        <i class="ph ph-file-arrow-up"></i> Abrir Importador
+                                    </button>
+                                </div>
+                                <div style="padding-left: 16px;">
                                     <h4 style="margin-bottom: 8px; color: var(--accent);"><i class="ph ph-cloud-arrow-up"></i> Compartilhar com Todos</h4>
                                     <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Envia seus dados atuais (Checklists, Lojas, etc) para a nuvem. Todos os usuários verão essas informações.</p>
                                     <button class="btn btn-primary" id="btn-publish-cloud" style="width: 100%; background: var(--accent); border-color: var(--accent);"><i class="ph ph-rocket-launch"></i> Publicar na Nuvem</button>
