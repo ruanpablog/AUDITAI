@@ -4636,42 +4636,6 @@ if (checklistForm) {
     });
 }
 
-// Lógica de Configurações Gerais
-function renderAdminSettings() {
-    if (!db.config) db.config = { emailjs_service: '', emailjs_template: '', emailjs_public_key: '', gemini_key: '', imgbb_key: '' };
-    
-    const svc = document.getElementById('cfg-email-service');
-    const tmp = document.getElementById('cfg-email-template');
-    const pub = document.getElementById('cfg-email-public-key');
-    const imgbb = document.getElementById('cfg-imgbb-key');
-    const gemini = document.getElementById('cfg-gemini-key');
-    const syncIdEl = document.getElementById('cfg-sync-id');
-    
-    if (svc) svc.value = db.config.emailjs_service || '';
-    if (tmp) tmp.value = db.config.emailjs_template || '';
-    if (pub) pub.value = db.config.emailjs_public_key || '';
-    if (imgbb) imgbb.value = db.config.imgbb_key || '';
-    if (gemini) gemini.value = db.config.gemini_key || '';
-    if (syncIdEl) syncIdEl.value = getCloudId();
-}
-
-const configForm = document.getElementById('email-config-form');
-if (configForm) {
-    configForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (!db.config) db.config = {};
-        
-        db.config.emailjs_service = document.getElementById('cfg-email-service').value.trim();
-        db.config.emailjs_template = document.getElementById('cfg-email-template').value.trim();
-        db.config.emailjs_public_key = document.getElementById('cfg-email-public-key').value.trim();
-        db.config.imgbb_key = document.getElementById('cfg-imgbb-key').value.trim();
-        db.config.gemini_key = document.getElementById('cfg-gemini-key').value.trim();
-        
-        saveDB(true); // Sincroniza com a nuvem ao salvar
-        alert('Configurações salvas com sucesso!');
-    });
-}
-
 // Refresh these tables when admin view is clicked
 const nAdmin2 = document.getElementById('nav-admin');
 if (nAdmin2) {
@@ -4683,7 +4647,6 @@ if (nAdmin2) {
         renderAdminDepts();
         renderAdminChecklists();
         renderAdminCategories();
-        renderAdminSettings();
         if (typeof populateChecklistForm === 'function') populateChecklistForm();
         if (typeof populateCategoryForm === 'function') populateCategoryForm();
     });

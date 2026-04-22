@@ -1111,50 +1111,6 @@
                     <!-- Admin Tab: Configurações EmailJS -->
                     <div id="admin-settings" class="tab-content">
                         <div class="glass" style="padding: 24px;">
-                            <h3 style="margin-bottom: 16px;">Configurações Gerais (Envio de E-mail)</h3>
-                            <p style="color: var(--text-muted); margin-bottom: 24px;">Configurações do EmailJS para envio de relatórios automáticos.</p>
-                            
-                            <form id="email-config-form">
-                                <div class="form-group" style="margin-bottom: 16px;">
-                                    <label>Service ID (EmailJS)</label>
-                                    <input type="text" id="cfg-email-service" placeholder="Ex: service_xxxxxx">
-                                </div>
-                                <div class="form-group" style="margin-bottom: 16px;">
-                                    <label>Template ID (EmailJS)</label>
-                                    <input type="text" id="cfg-email-template" placeholder="Ex: template_xxxxxx">
-                                </div>
-                                <div class="form-group" style="margin-bottom: 24px;">
-                                    <label>Public Key (User ID)</label>
-                                    <input type="text" id="cfg-email-public-key" placeholder="Sua chave pública">
-                                </div>
-                                
-                                <h3 style="margin-bottom: 16px; margin-top: 32px;">Hospedagem de Fotos na Nuvem</h3>
-                                <p style="color: var(--text-muted); margin-bottom: 24px;">Configure uma chave gratuita do <a href="https://api.imgbb.com" target="_blank" style="color:var(--accent);">ImgBB</a> para salvar fotos sem sobrecarregar a memória do aplicativo.</p>
-                                <div class="form-group" style="margin-bottom: 24px;">
-                                    <label>API Key (ImgBB)</label>
-                                    <input type="text" id="cfg-imgbb-key" placeholder="Ex: 8a9b1c2d3e4f5g6h7i8j9k0l...">
-                                </div>
-
-                                <h3 style="margin-bottom: 16px; margin-top: 32px; color: var(--primary);"><i class="ph ph-sparkle"></i> Inteligência Artificial (Google Gemini)</h3>
-                                <p style="color: var(--text-muted); margin-bottom: 24px;">Configure sua chave do Gemini para habilitar a análise real de documentos e sugestão automática de checklists.</p>
-                                <div class="form-group" style="margin-bottom: 24px;">
-                                    <label>Gemini API Key</label>
-                                    <input type="password" id="cfg-gemini-key" placeholder="Insira sua chave do Google AI Studio">
-                                    <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Obtenha uma chave gratuita em <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent);">AI Studio</a>.</p>
-                                </div>
-
-                                <div class="form-group" style="margin-top: 32px; padding-top: 16px; border-top: 1px dashed var(--border);">
-                                    <label>ID de Sincronização (Debug)</label>
-                                    <div style="display: flex; gap: 8px;">
-                                        <input type="text" id="cfg-sync-id" readonly style="background: #f8fafc; font-family: monospace; border: 1px solid var(--border); width: 100%;">
-                                    </div>
-                                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Este ID identifica seu container de dados no Supabase.</p>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Salvar Configurações</button>
-                            </form>
-                            
-                            <hr style="border: 0; border-top: 1px solid var(--border); margin: 32px 0;">
-
                             <h3 style="margin-bottom: 16px; color: var(--primary);">Gerenciamento de Dados (Migração & Backup)</h3>
                             <p style="color: var(--text-muted); margin-bottom: 24px; line-height: 1.5;">Importe seus dados locais (lojas, checklists, auditorias) para migrar de um ambiente para outro ou restaurar um backup.</p>
                             
