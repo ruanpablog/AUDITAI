@@ -408,6 +408,7 @@
                     <button class="tab-btn" data-tab="dash-departments">Departamentos</button>
                     <button class="tab-btn" data-tab="dash-ranking">Ranking Geral (Lojas/Gestores)</button>
                     <button class="tab-btn" data-tab="dash-evo-ranking" style="background: var(--accent); color: white; border: none; font-weight: 600;">⭐ Ranking Evolução</button>
+                    <button class="tab-btn" data-tab="dash-routine" style="background: var(--secondary); color: white; border: none; font-weight: 600;">📋 Rotinas do Setor</button>
                 </div>
                 <div id="dash-overview" class="tab-content active">
                     <div class="card-grid">
@@ -521,6 +522,39 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NOVO: Tab de Dashboard de Rotinas -->
+                <div id="dash-routine" class="tab-content">
+                    <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 24px;">
+                        <div class="glass kpi-card kpi-secondary">
+                            <span class="kpi-label"><i class="ph ph-list-checks"></i> Rotinas Realizadas</span>
+                            <span class="kpi-value" id="kpi-routine-total">0</span>
+                        </div>
+                        <div class="glass kpi-card kpi-success">
+                            <span class="kpi-label"><i class="ph ph-chart-line-up"></i> Performance Rotinas</span>
+                            <span class="kpi-value" id="kpi-routine-avg">0%</span>
+                        </div>
+                    </div>
+                    <div class="glass" style="padding:24px; margin-bottom: 24px; border-top: 4px solid var(--secondary);">
+                        <h3 style="margin-bottom:20px; font-size:1.2rem; color: var(--secondary);">🏆 Ranking de Performance: Rotinas do Setor</h3>
+                        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:20px;">Líderes de conformidade operacional nas rotinas diárias (Focado em Gestores).</p>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Posição</th>
+                                        <th>Gestor Responsável</th>
+                                        <th>Score Médio</th>
+                                        <th>Última Rotina</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dash-routine-ranking-table-body">
+                                    <tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum dado de rotina encontrado.</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -1418,10 +1452,25 @@ FOR ALL USING (true) WITH CHECK (true);</pre>
                 </p>
             </div>
 
-            <!-- Botão ver POP -->
-            <button class="btn btn-ghost btn-sm" id="btn-view-pop-awareness" style="color:var(--primary); font-size:0.8rem; margin-bottom:20px; display:none;">
-                <i class="ph ph-file-pdf"></i> Visualizar o Documento POP antes de prosseguir
-            </button>
+            <!-- Botões de Documento -->
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button class="btn btn-ghost btn-sm" id="btn-view-pop-awareness" style="color:var(--primary); font-size:0.8rem; display:none; flex:1; border:1px solid rgba(239,68,68,0.2);">
+                    <i class="ph ph-file-pdf"></i> Visualizar POP
+                </button>
+                <button class="btn btn-ghost btn-sm" id="btn-download-pop-awareness" style="color:var(--success); font-size:0.8rem; display:none; flex:1; border:1px solid rgba(16,185,129,0.2);">
+                    <i class="ph ph-download-simple"></i> Baixar POP
+                </button>
+            </div>
+
+            <!-- Seleção de Loja (Obrigatório para Rotina) -->
+            <div class="form-group" style="margin-bottom:16px;">
+                <label style="font-size:0.8rem; color:var(--text-muted); margin-bottom:6px; display:block;">
+                    <i class="ph ph-storefront"></i> FILIAL A SER AUDITADA *
+                </label>
+                <select id="awareness-store-id" class="form-control" style="width:100%; padding:12px; border-radius:8px; background:#1f2937; color:white; border:1px solid rgba(255,255,255,0.1);" onchange="window.checkAwarenessReady()">
+                    <option value="">Selecione a Loja...</option>
+                </select>
+            </div>
 
             <!-- Campo de Nome -->
             <div class="form-group" style="margin-bottom:16px;">

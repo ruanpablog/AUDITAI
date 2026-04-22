@@ -998,47 +998,58 @@ const _genChecksum = (str) => {
         const dept = db.departments.find(d => d.id === deptId);
         if (!dept) return;
 
-        // Resetar auditoria atual para modo Rotina
-        currentAudit = {
-            id: 'aud_rot_' + Date.now(),
-            storeId: selectedStoreId || (db.stores.length > 0 ? db.stores[0].id : null),
-            date: new Date().toISOString(),
-            type: 'rotina',
-            deptId: deptId,
-            deptName: dept.name,
-            departments: []
+        // Criar um objeto de "POP virtual" para o fluxo de rotina manual
+        window.activePopAwareness = {
+            id: 'manual_rot_' + deptId,
+            name: 'Rotina: ' + dept.name,
+            dept_id: deptId,
+            items: items.map(i => i.id || i)
         };
 
-        if (!currentAudit.storeId) {
-            alert('Por favor, selecione uma loja no menu "Nova Auditoria" primeiro.');
-            switchSection('audit-flow');
-            return;
+        const modal = document.getElementById('modal-pop-awareness');
+        const nameInput = document.getElementById('awareness-auditor-name');
+        const btn = document.getElementById('btn-start-audit-final');
+        const storeSelect = document.getElementById('awareness-store-id');
+
+        // Resetar o modal
+        if (nameInput) nameInput.value = '';
+        if (btn) btn.disabled = true;
+        window._signatureDone = false;
+        window.clearSignature();
+        
+        // Popular seletor de lojas
+        if (storeSelect) {
+            storeSelect.innerHTML = '<option value="">Selecione a Filial...</option>';
+            db.stores.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                storeSelect.appendChild(opt);
+            });
         }
 
-        activeDeptId = dept.id;
-        deptResponsibleName = currentUser ? currentUser.name : "";
+        // Esconder botões de documento (Pois é rotina manual sem PDF)
+        const btnView = document.getElementById('btn-view-pop-awareness');
+        const btnDownload = document.getElementById('btn-download-pop-awareness');
+        if (btnView) btnView.style.display = 'none';
+        if (btnDownload) btnDownload.style.display = 'none';
 
-        // Mudar para o fluxo de auditoria e exibir os itens de rotina
-        switchSection('audit-flow');
-        document.querySelectorAll('.audit-step').forEach(s => s.classList.add('hidden'));
-        document.getElementById('step-3').classList.remove('hidden');
-        
-        const store = db.stores.find(s => s.id === currentAudit.storeId);
-        const storeTitle = document.getElementById('current-store-title-step3');
-        if (storeTitle) storeTitle.innerText = store ? store.name : 'Loja';
-        
-        const deptTitle = document.getElementById('current-dept-title');
-        if (deptTitle) deptTitle.innerText = 'Rotina: ' + dept.name;
+        updateAwarenessStatus(false, false);
+        modal.classList.remove('hidden');
 
-        const badgeContainer = document.getElementById('step-3-badge-container');
-        if (badgeContainer) badgeContainer.innerHTML = '<span class="badge badge-accent" style="padding:6px 12px; font-size:0.75rem;"><i class="ph ph-list-checks"></i> MODO ROTINA</span>';
+        btn.onclick = () => {
+            const auditorName = nameInput.value.trim();
+            const storeId = storeSelect.value;
+            if (!storeId) {
+                alert('Selecione uma filial.');
+                return;
+            }
+            if (auditorName.length < 2) return;
+            if (!window._signatureDone) return;
 
-        // Renderizar apenas os itens de rotina
-        if (typeof renderQuestions === 'function') {
-            renderQuestions(items, 'Itens de Rotina - ' + dept.name);
-        }
-        
-        updateProgressBar(1.0);
+            const signature = window._sigCanvas.toDataURL();
+            startAuditFlow(deptId, items.map(i => i.id || i), auditorName, signature, storeId, 'rotina');
+        };
     };
 
     window.startAuditFromPOP = function(popId) {
@@ -1057,16 +1068,45 @@ const _genChecksum = (str) => {
         if (btn) btn.disabled = true;
         window._signatureDone = false;
         window.clearSignature();
+        
+        // Popular seletor de lojas no modal
+        const storeSelect = document.getElementById('awareness-store-id');
+        if (storeSelect) {
+            storeSelect.innerHTML = '<option value="">Selecione a Filial...</option>';
+            db.stores.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                storeSelect.appendChild(opt);
+            });
+        }
+
         updateAwarenessStatus(false, false);
 
-        // Configurar botão de visualização do POP
+        // Configurar botões de documento (Visualizar e Download)
         const btnView = document.getElementById('btn-view-pop-awareness');
+        const btnDownload = document.getElementById('btn-download-pop-awareness');
+
+        // Configurar botão de visualização do POP
         if (btnView) {
             if (pop.fileData) {
                 btnView.style.display = 'block';
                 btnView.onclick = () => window.viewAttachedDoc(pop.fileData, pop.name);
+                
+                if (btnDownload) {
+                    btnDownload.style.display = 'block';
+                    btnDownload.onclick = () => {
+                        const link = document.createElement('a');
+                        link.href = pop.fileData; // fileData já deve estar em base64 com prefixo
+                        link.download = `POP_${pop.name.replace(/\s+/g, '_')}.pdf`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    };
+                }
             } else {
                 btnView.style.display = 'none';
+                if (btnDownload) btnDownload.style.display = 'none';
             }
         }
 
@@ -1171,6 +1211,12 @@ const _genChecksum = (str) => {
         // Ação Final de Início
         btn.onclick = () => {
             const auditorName = document.getElementById('awareness-auditor-name').value.trim();
+            const storeId = document.getElementById('awareness-store-id').value;
+
+            if (!storeId) {
+                alert('Por favor, selecione a FILIAL antes de prosseguir.');
+                return;
+            }
             if (auditorName.length < 2) {
                 document.getElementById('awareness-auditor-name').focus();
                 return;
@@ -1180,75 +1226,59 @@ const _genChecksum = (str) => {
                 return;
             }
 
-            modal.classList.add('hidden');
-
-            // Capturar imagem da assinatura
-            const sigImage = window._sigCanvas ? window._sigCanvas.toDataURL() : null;
-
-            currentAudit = {
-                id: 'aud_pop_' + Date.now(),
-                storeId: selectedStoreId || (db.stores.length > 0 ? db.stores[0].id : null),
-                date: new Date().toISOString(),
-                type: 'pop',
-                popId: pop.id,
-                popName: pop.name,
-                auditor: auditorName,
-                popAwarenessConfirmed: true,
-                popAwarenessTimestamp: new Date().toISOString(),
-                popAwarenessSignature: sigImage,
-                auditorIdBase: currentUser ? currentUser.id : 'anon',
-                departments: []
-            };
-
-            if (!currentAudit.storeId) {
-                alert('Por favor, selecione uma loja no menu "Nova Auditoria" primeiro.');
-                switchSection('audit-flow');
-                return;
-            }
-
-            const dept = db.departments.find(d => d.id === pop.dept_id);
-            if (!dept) {
-                alert('Departamento vinculado ao POP não encontrado.');
-                return;
-            }
-
-            activeDeptId = dept.id;
-            deptResponsibleName = auditorName;
-
-            switchSection('audit-flow');
-            document.querySelectorAll('.audit-step').forEach(s => s.classList.add('hidden'));
-            document.getElementById('step-3').classList.remove('hidden');
-
-            const store = db.stores.find(s => s.id === currentAudit.storeId);
-            const storeTitle = document.getElementById('current-store-title-step3');
-            if (storeTitle) storeTitle.innerText = store ? store.name : 'Loja';
-
-            const deptTitle = document.getElementById('current-dept-title');
-            if (deptTitle) deptTitle.innerText = pop.name;
-
-            const badgeContainer = document.getElementById('step-3-badge-container');
-            if (badgeContainer) {
-                badgeContainer.innerHTML = `
-                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-                        <span class="badge badge-primary" style="padding:6px 12px; font-size:0.75rem;"><i class="ph ph-file-text"></i> PROCEDIMENTO (POP)</span>
-                        ${pop.fileData ? `<button class="btn btn-outline btn-xs" onclick="window.viewAttachedDoc('${pop.fileData ? 'pop_file_ref' : ''}', '${pop.name}')" style="font-size:0.65rem;"><i class="ph ph-eye"></i> Ver POP Original</button>` : ''}
-                    </div>
-                `;
-                if (pop.fileData) {
-                    const b = badgeContainer.querySelector('button');
-                    if (b) b.onclick = () => window.viewAttachedDoc(pop.fileData, pop.name);
-                }
-            }
-
-            const popItems = db.checklistItems.filter(item => pop.items.includes(item.id));
-            if (popItems.length === 0) {
-                alert('Este POP não possui itens vinculados.');
-                return;
-            }
-            renderQuestions(popItems, pop.name);
-            updateProgressBar(0.8);
+            // Iniciar a auditoria com os dados coletados
+            const signature = window._sigCanvas.toDataURL();
+            startAuditFlow(pop.dept_id, pop.items, auditorName, signature, storeId, 'rotina');
         };
     };
+
+    function startAuditFlow(deptId, itemIds, auditorName, signature, storeId, type) {
+        const modal = document.getElementById('modal-pop-awareness');
+        modal.classList.add('hidden');
+
+        currentAudit = {
+            id: 'aud_pop_' + Date.now(),
+            storeId: storeId,
+            date: new Date().toISOString(),
+            type: type,
+            popId: window.activePopAwareness.id,
+            popName: window.activePopAwareness.name,
+            auditor: auditorName,
+            popAwarenessConfirmed: true,
+            popAwarenessTimestamp: new Date().toISOString(),
+            popAwarenessSignature: signature,
+            auditorIdBase: currentUser ? currentUser.id : 'anon',
+            departments: []
+        };
+
+        const dept = db.departments.find(d => d.id === deptId);
+        activeDeptId = dept.id;
+        deptResponsibleName = auditorName;
+
+        switchSection('audit-flow');
+        document.querySelectorAll('.audit-step').forEach(s => s.classList.add('hidden'));
+        document.getElementById('step-3').classList.remove('hidden');
+
+        const store = db.stores.find(s => s.id === storeId);
+        const storeTitle = document.getElementById('current-store-title-step3');
+        if (storeTitle) storeTitle.innerText = store ? store.name : 'Loja';
+
+        const deptTitle = document.getElementById('current-dept-title');
+        if (deptTitle) deptTitle.innerText = window.activePopAwareness.name;
+
+        const badgeContainer = document.getElementById('step-3-badge-container');
+        if (badgeContainer) {
+            badgeContainer.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+                    <span class="badge badge-primary" style="padding:6px 12px; font-size:0.75rem;"><i class="ph ph-file-text"></i> PROCEDIMENTO (POP)</span>
+                </div>
+            `;
+        }
+
+        const popItems = db.checklistItems.filter(item => itemIds.includes(item.id));
+        renderQuestions(popItems, window.activePopAwareness.name);
+        updateProgressBar(0.8);
+    }
 
     function updateAwarenessStatus(hasName, hasSig) {
         const nameStatus = document.getElementById('status-name');
@@ -1269,7 +1299,8 @@ const _genChecksum = (str) => {
 
     window.checkAwarenessReady = function() {
         const name = document.getElementById('awareness-auditor-name').value.trim();
-        updateAwarenessStatus(name.length > 2, window._signatureDone || false);
+        const store = document.getElementById('awareness-store-id').value;
+        updateAwarenessStatus(name.length > 2 && store !== '', window._signatureDone);
     };
 
     window.clearSignature = function() {
@@ -2499,39 +2530,82 @@ const _genChecksum = (str) => {
             filteredAudits = filteredAudits.filter(a => new Date(a.date) <= end);
         }
 
-        // Filter by the current user's auditor name if NOT admin
         const curUser = JSON.parse(localStorage.getItem('auditai_user'));
         if (curUser && curUser.role !== 'admin') {
             filteredAudits = filteredAudits.filter(a => a.auditor === curUser.name);
         }
 
-        // KPI calculations
-        document.getElementById('kpi-total-audits').innerText = filteredAudits.length;
+        // --- DASHBOARD DE AUDITORIAS PADRÃO ---
+        const standardAudits = filteredAudits.filter(a => a.type !== 'rotina');
         
-        let uniqueStores = new Set(filteredAudits.map(a => a.storeId)).size;
+        document.getElementById('kpi-total-audits').innerText = standardAudits.length;
+        let uniqueStores = new Set(standardAudits.map(a => a.storeId)).size;
         document.getElementById('kpi-stores-audited').innerText = uniqueStores;
 
         let tScore = 0;
         let cIssues = 0;
-
-        filteredAudits.forEach(a => {
+        standardAudits.forEach(a => {
             tScore += a.percentage;
             a.departments.forEach(d => {
                 cIssues += d.responses.filter(r => r.value === 'ruim').length;
             });
         });
 
-        const avgScore = filteredAudits.length > 0 ? Math.round(tScore / filteredAudits.length) : 0;
-        document.getElementById('kpi-avg-score').innerText = avgScore + '%';
+        const avg = standardAudits.length > 0 ? Math.round(tScore / standardAudits.length) : 0;
+        document.getElementById('kpi-avg-score').innerText = avg + '%';
         document.getElementById('kpi-critical-issues').innerText = cIssues;
-        document.getElementById('gauge-score').innerText = avgScore + '%';
 
-        renderCharts(filteredAudits, storeFilter);
-        renderRanking(filteredAudits);
-        renderClassificationChart(filteredAudits);
-        renderEvolutionRanking(filteredAudits);
+        // --- DASHBOARD DE ROTINAS (NOVO) ---
+        const routineAudits = filteredAudits.filter(a => a.type === 'rotina');
+        document.getElementById('kpi-routine-total').innerText = routineAudits.length;
+        const rAvg = routineAudits.length > 0 ? Math.round(routineAudits.reduce((s,a) => s + a.percentage, 0) / routineAudits.length) : 0;
+        document.getElementById('kpi-routine-avg').innerText = rAvg + '%';
+        renderRoutineRanking(routineAudits);
+
+        // Render standard components with filtered data
+        renderCharts(standardAudits, storeFilter);
+        renderRanking(standardAudits);
+        renderClassificationChart(standardAudits);
+        renderEvolutionRanking(standardAudits);
         populateDashboardStores();
     }
+
+    function renderRoutineRanking(routineAudits) {
+        const tbody = document.getElementById('dash-routine-ranking-table-body');
+        if(!tbody) return;
+        tbody.innerHTML = '';
+
+        if(routineAudits.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum dado de rotina encontrado.</td></tr>';
+            return;
+        }
+
+        // Agrupar por Gestor
+        const gestoresScore = {};
+        routineAudits.forEach(aud => {
+            const store = db.stores.find(s => s.id === aud.storeId);
+            const gestor = store ? store.managerName : aud.auditor;
+            if(!gestoresScore[gestor]) gestoresScore[gestor] = { t: 0, c: 0, last: aud.date };
+            gestoresScore[gestor].t += aud.percentage;
+            gestoresScore[gestor].c++;
+            if(new Date(aud.date) > new Date(gestoresScore[gestor].last)) gestoresScore[gestor].last = aud.date;
+        });
+
+        const sorted = Object.entries(gestoresScore).sort((a,b) => (b[1].t/b[1].c) - (a[1].t/a[1].c));
+
+        tbody.innerHTML = sorted.map(([name, data], idx) => {
+            const avg = Math.round(data.t / data.c);
+            return `
+                <tr>
+                    <td><span class="badge ${idx < 3 ? 'badge-secondary' : 'badge-ghost'}">${idx + 1}º</span></td>
+                    <td><strong>${name}</strong></td>
+                    <td style="font-weight:700; color:var(--secondary);">${avg}%</td>
+                    <td style="font-size:0.8rem; color:var(--text-muted);">${new Date(data.last).toLocaleDateString()}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
 
     function populateDashboardStores() {
         const storeFilter = document.getElementById('dash-store-filter');
