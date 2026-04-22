@@ -1511,33 +1511,93 @@ FOR ALL USING (true) WITH CHECK (true);</pre>
 
     <!-- Modal: Bulk Import -->
     <div id="modal-bulk-import" class="modal">
-        <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-content" style="max-width: 850px; width: 95%;">
             <div class="modal-header">
-                <h2><i class="ph ph-file-arrow-up"></i> Importação em Massa</h2>
+                <div>
+                    <h2 style="display: flex; align-items: center; gap: 10px;">
+                        <i class="ph ph-file-spreadsheet" style="color: var(--primary); font-size: 1.8rem;"></i> 
+                        Importação de Dados em Massa
+                    </h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Configure sua operação em minutos importando tudo de uma vez.</p>
+                </div>
                 <button class="btn-icon" onclick="closeModal('modal-bulk-import')"><i class="ph ph-x"></i></button>
             </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 20px; color: var(--text-muted); font-size: 0.95rem;">
-                    Siga o modelo padrão para importar Empresas, Filiais, Departamentos, Checklists e Usuários simultaneamente.
-                </p>
+            
+            <div class="modal-body" style="padding-top: 10px;">
                 
-                <div style="background: rgba(0,0,0,0.1); padding: 16px; border-radius: 8px; margin-bottom: 24px; border: 1px solid var(--border);">
-                    <h4 style="margin-bottom: 8px; font-size: 0.9rem;">1. Baixe o Modelo</h4>
-                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Seu arquivo deve conter exatamente as colunas do modelo para funcionar.</p>
-                    <button class="btn btn-sm btn-outline" id="btn-download-import-template">
-                        <i class="ph ph-download-simple"></i> Download Template (.xlsx)
-                    </button>
+                <!-- Step 1: Template Preview -->
+                <div style="margin-bottom: 30px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px;">
+                        <h3 style="font-size: 1rem; color: var(--text-body);"><i class="ph ph-number-circle-one" style="color: var(--primary);"></i> 1. Siga este Modelo de Planilha</h3>
+                        <button class="btn btn-sm btn-outline" id="btn-download-import-template" style="font-size: 0.75rem; padding: 6px 12px;">
+                            <i class="ph ph-download-simple"></i> Baixar Planilha Modelo (.xlsx)
+                        </button>
+                    </div>
+                    
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+                        Preencha as colunas abaixo no Excel. O sistema criará automaticamente as Empresas, Filiais, Departamentos e Checklists.
+                    </p>
+
+                    <!-- Visual Spreadsheet Preview -->
+                    <div style="background: #0f172a; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                        <div style="overflow-x: auto; white-space: nowrap;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+                                <thead style="background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--border);">
+                                    <tr>
+                                        <th style="padding: 10px 15px; color: var(--primary); border-right: 1px solid var(--border);">nome_empresa</th>
+                                        <th style="padding: 10px 15px; color: var(--primary); border-right: 1px solid var(--border);">cnpj_empresa</th>
+                                        <th style="padding: 10px 15px; color: var(--primary); border-right: 1px solid var(--border);">nome_filial</th>
+                                        <th style="padding: 10px 15px; color: var(--primary); border-right: 1px solid var(--border);">departamento</th>
+                                        <th style="padding: 10px 15px; color: var(--primary); border-right: 1px solid var(--border);">categoria_checklist</th>
+                                        <th style="padding: 10px 15px; color: var(--primary); border-right: 1px solid var(--border);">item_checklist</th>
+                                        <th style="padding: 10px 15px; color: var(--primary);">nome_usuario</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">Exemplo Corp</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">12.345...</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">Loja Sul</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">Cozinha</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">Limpeza</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">Piso está limpo?</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8;">João Silva</td>
+                                    </tr>
+                                    <tr style="background: rgba(255,255,255,0.02);">
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">Exemplo Corp</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">12.345...</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">Loja Sul</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">Cozinha</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">Equipamentos</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8; border-right: 1px solid var(--border);">Forno higienizado?</td>
+                                        <td style="padding: 8px 15px; color: #94a3b8;">João Silva</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="background: rgba(239, 68, 68, 0.05); padding: 8px 15px; font-size: 0.7rem; color: var(--danger); display: flex; align-items: center; gap: 8px;">
+                            <i class="ph ph-warning-circle"></i> 
+                            <strong>Atenção:</strong> Não altere o nome das colunas (primeira linha).
+                        </div>
+                    </div>
                 </div>
 
-                <div id="import-drop-zone" style="border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(255,255,255,0.02);">
-                    <i class="ph ph-cloud-arrow-up" style="font-size: 3.5rem; color: var(--primary); margin-bottom: 16px;"></i>
-                    <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Arraste ou clique para selecionar</h3>
-                    <p style="font-size: 0.85rem; color: var(--text-muted);">Suporta arquivos .csv, .xlsx e .xls</p>
-                    <input type="file" id="bulk-import-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" style="display: none;">
-                    <div id="selected-import-filename" style="margin-top: 12px; font-weight: 600; font-size: 0.9rem; color: var(--primary);" class="hidden"></div>
+                <!-- Step 2: Upload -->
+                <div>
+                    <h3 style="font-size: 1rem; color: var(--text-body); margin-bottom: 12px;">
+                        <i class="ph ph-number-circle-two" style="color: var(--primary);"></i> 2. Importar seu Arquivo Preenchido
+                    </h3>
+                    
+                    <div id="import-drop-zone" style="border: 2px dashed var(--border); border-radius: 12px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(255,255,255,0.02); position: relative;">
+                        <i class="ph ph-cloud-arrow-up" style="font-size: 3rem; color: var(--primary); margin-bottom: 12px;"></i>
+                        <h3 style="font-size: 1.1rem; margin-bottom: 4px;">Selecione sua Planilha</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted);">Arraste o arquivo .xlsx ou clique aqui</p>
+                        <input type="file" id="bulk-import-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" style="display: none;">
+                        <div id="selected-import-filename" style="margin-top: 12px; font-weight: 600; font-size: 0.9rem; color: var(--primary); background: rgba(239, 68, 68, 0.1); padding: 8px; border-radius: 6px; display: inline-block;" class="hidden"></div>
+                    </div>
                 </div>
 
-                <div id="import-status-container" class="hidden" style="margin-top: 24px;">
+                <div id="import-status-container" class="hidden" style="margin-top: 24px; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border);">
                     <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
                         <span id="import-status-text" style="font-size: 0.9rem; font-weight: 600;">Processando...</span>
                         <span id="import-progress-pct" style="font-size: 0.85rem; color: var(--text-muted);">0%</span>
