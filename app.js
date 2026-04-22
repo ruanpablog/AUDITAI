@@ -5098,7 +5098,6 @@ function renderScheduledAudits() {
     const progressPct = document.getElementById('import-progress-pct');
     const importLog = document.getElementById('import-log');
 
-    // Make closeModal available globally if not already for the modal header
     window.closeModal = window.closeModal || function(modalId) {
         document.getElementById(modalId)?.classList.add('hidden');
     };
@@ -5106,7 +5105,6 @@ function renderScheduledAudits() {
     if (btnShowBulkImport) {
         btnShowBulkImport.addEventListener('click', () => {
             modalBulkImport.classList.remove('hidden');
-            // Reset UI
             bulkImportFileInput.value = '';
             fileNameDisplay.classList.add('hidden');
             fileNameDisplay.innerText = '';
@@ -5115,11 +5113,16 @@ function renderScheduledAudits() {
             importLog.innerHTML = '';
             progressBar.style.width = '0%';
             progressPct.innerText = '0%';
+            progressBar.style.background = 'var(--primary)';
         });
     }
 
     if (btnDownloadTemplate) {
         btnDownloadTemplate.addEventListener('click', () => {
+            if (typeof XLSX === 'undefined') {
+                alert("Erro: Biblioteca de exportação (SheetJS) não carregada.");
+                return;
+            }
             const templateData = [
                 ["nome_empresa", "cnpj_empresa", "nome_filial", "cidade_filial", "departamento", "categoria_checklist", "item_checklist", "nome_usuario", "email_usuario", "cargo_usuario", "senha_usuario"],
                 ["Exemplo Corp", "12.345.678/0001-90", "Loja Matriz", "São Paulo", "Frente de Loja", "Atendimento", "O caixa está limpo e organizado?", "João Silva", "joao@exemplocorp.com", "Caixa", "Auditai123"]
@@ -5133,14 +5136,8 @@ function renderScheduledAudits() {
 
     if (dropZone) {
         dropZone.addEventListener('click', () => bulkImportFileInput.click());
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.style.borderColor = 'var(--primary)';
-        });
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.style.borderColor = 'var(--border)';
-        });
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; });
+        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--border)'; });
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.style.borderColor = 'var(--border)';
@@ -5181,12 +5178,18 @@ function renderScheduledAudits() {
             const file = bulkImportFileInput.files[0];
             if (!file) return;
 
+            if (typeof XLSX === 'undefined') {
+                logMessage("Erro: Biblioteca SheetJS não encontrada. Verifique sua conexão com a internet.", true);
+                return;
+            }
+
             btnStartImport.disabled = true;
             statusContainer.classList.remove('hidden');
             importLog.innerHTML = '';
             statusText.innerText = 'Lendo arquivo...';
             progressBar.style.width = '10%';
             progressPct.innerText = '10%';
+            progressBar.style.background = 'var(--primary)';
 
             const reader = new FileReader();
             reader.onload = async (e) => {
@@ -5210,27 +5213,28 @@ function renderScheduledAudits() {
                     const generateId = (prefix) => prefix + '_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
                     const normalize = (str) => String(str || '').trim().toLowerCase();
 
+                    // Garantir inicialização dos arrays no DB
+                    if (!db.companies) db.companies = [];
+                    if (!db.stores) db.stores = [];
+                    if (!db.departments) db.departments = [];
+                    if (!db.categories) db.categories = [];
+                    if (!db.users) db.users = [];
+                    if (!db.checklistItems) db.checklistItems = [];
+
                     let companiesMap = new Map();
-                    if(db.companies) db.companies.forEach(c => companiesMap.set(normalize(c.cnpj), c.id));
-                    else db.companies = [];
+                    db.companies.forEach(c => { if(c.cnpj) companiesMap.set(normalize(c.cnpj), c.id); });
 
                     let storesMap = new Map();
-                    if(db.stores) db.stores.forEach(s => storesMap.set(`${s.companyId}_${normalize(s.name)}`, s.id));
-                    else db.stores = [];
+                    db.stores.forEach(s => storesMap.set(`${s.companyId}_${normalize(s.name)}`, s.id));
 
                     let deptsMap = new Map();
-                    if(db.departments) db.departments.forEach(d => deptsMap.set(normalize(d.name), d.id));
-                    else db.departments = [];
+                    db.departments.forEach(d => deptsMap.set(normalize(d.name), d.id));
 
                     let catsMap = new Map();
-                    if(db.categories) db.categories.forEach(c => catsMap.set(`${c.dept_id}_${normalize(c.name)}`, c.id));
-                    else db.categories = [];
+                    db.categories.forEach(c => catsMap.set(`${c.dept_id}_${normalize(c.name)}`, c.id));
                     
                     let usersMap = new Map();
-                    if(db.users) db.users.forEach(u => usersMap.set(normalize(u.email), u.id));
-                    else db.users = [];
-
-                    if(!db.checklistItems) db.checklistItems = [];
+                    db.users.forEach(u => usersMap.set(normalize(u.email), u.id));
 
                     logMessage(`Iniciando processamento de ${rows.length} linhas.`);
 
@@ -5240,7 +5244,8 @@ function renderScheduledAudits() {
                         progressBar.style.width = `${progress}%`;
                         progressPct.innerText = `${progress}%`;
 
-                        if(!row.nome_empresa && !row.nome_usuario && !row.departamento) continue;
+                        // Pular se linha estiver vazia
+                        if(!row.nome_empresa && !row.nome_usuario && !row.departamento && !row.item_checklist) continue;
 
                         try {
                             let compId = null;
@@ -5252,7 +5257,7 @@ function renderScheduledAudits() {
                                     compId = generateId('comp');
                                     db.companies.push({
                                         id: compId, name: String(row.nome_empresa).trim(), cnpj: String(row.cnpj_empresa).trim(),
-                                        city: '', address: '', phone: '', email: '', logo: '', status: 'Ativo'
+                                        city: String(row.cidade_filial || '').trim(), address: '', phone: '', email: '', logo: '', status: 'Ativo'
                                     });
                                     companiesMap.set(cKey, compId);
                                     stats.empresas++;
@@ -5307,12 +5312,13 @@ function renderScheduledAudits() {
 
                             if (deptId && row.item_checklist) {
                                 const qText = String(row.item_checklist).trim();
+                                const cId = catId || 'none';
                                 const exists = db.checklistItems.some(item => 
-                                    item.dept_id === deptId && item.cat_id === (catId || 'none') && normalize(item.question) === normalize(qText)
+                                    item.dept_id === deptId && item.cat_id === cId && normalize(item.question) === normalize(qText)
                                 );
                                 if (!exists) {
                                     db.checklistItems.push({
-                                        id: generateId('i'), dept_id: deptId, cat_id: catId || 'none', question: qText,
+                                        id: generateId('i'), dept_id: deptId, cat_id: cId, question: qText,
                                         fluxo: 'auditoria', status: 'Ativo', eh_critico: false
                                     });
                                     stats.checklists++;
@@ -5324,23 +5330,28 @@ function renderScheduledAudits() {
                                 if (!usersMap.has(uKey)) {
                                     const uId = generateId('u');
                                     db.users.push({
-                                        id: uId, name: String(row.nome_usuario).trim(), email: String(row.email_usuario).trim(),
-                                        password: row.senha_usuario ? String(row.senha_usuario).trim() : 'Auditai123',
+                                        id: uId, 
+                                        name: String(row.nome_usuario).trim(), 
+                                        email: String(row.email_usuario).trim().toLowerCase(),
+                                        pass: row.senha_usuario ? String(row.senha_usuario).trim() : 'Auditai123',
                                         role: String(row.cargo_usuario || '').toLowerCase().includes('admin') ? 'admin' : 'gerente',
-                                        companyId: compId || null, approved: true, photo: null
+                                        companyId: compId || null, 
+                                        status: 'aprovado',
+                                        approved: true, 
+                                        photo: null
                                     });
                                     usersMap.set(uKey, uId);
                                     stats.usuarios++;
-                                    logMessage(`Novo usuário criado: ${row.nome_usuario} (${row.email_usuario})`);
+                                    logMessage(`Novo usuário: ${row.nome_usuario}`);
                                 }
                             }
                         } catch (rowErr) {
                             stats.erros++;
-                            logMessage(`Erro linha ${i+2}: ${rowErr.message}`, true);
+                            logMessage(`Erro na linha ${i+2}: ${rowErr.message}`, true);
                         }
                     }
 
-                    statusText.innerText = 'Salvando e Sincronizando...';
+                    statusText.innerText = 'Sincronizando com a Nuvem...';
                     progressBar.style.width = '95%';
                     progressPct.innerText = '95%';
 
@@ -5350,24 +5361,17 @@ function renderScheduledAudits() {
                     progressBar.style.width = '100%';
                     progressPct.innerText = '100%';
                     
-                    logMessage(`SUCESSO. Dados importados/criados:`, false);
-                    logMessage(`- ${stats.empresas} Empresas`, false);
-                    logMessage(`- ${stats.filiais} Filiais`, false);
-                    logMessage(`- ${stats.departamentos} Departamentos`, false);
-                    logMessage(`- ${stats.categorias} Categorias`, false);
-                    logMessage(`- ${stats.checklists} Itens de Checklist`, false);
-                    logMessage(`- ${stats.usuarios} Usuários`, false);
-                    if (stats.erros > 0) logMessage(`- ${stats.erros} Erros (veja acima)`, true);
+                    logMessage(`SUCESSO: ${stats.empresas} Emp, ${stats.filiais} Fil, ${stats.departamentos} Dept, ${stats.categorias} Cat, ${stats.checklists} Itens, ${stats.usuarios} Usu.`);
+                    if (stats.erros > 0) logMessage(`${stats.erros} erros ignorados.`, true);
 
-                    if (typeof renderAdminUsers === 'function') renderAdminUsers();
-                    if (typeof renderAdminCompanies === 'function') renderAdminCompanies();
-                    if (typeof renderAdminDepts === 'function') renderAdminDepts();
-                    if (typeof renderAdminCategories === 'function') renderAdminCategories();
-                    if (typeof renderAdminChecklists === 'function') renderAdminChecklists();
-                    if (typeof renderAdminStores === 'function') renderAdminStores();
+                    // Refresh Admin Tables
+                    ['renderAdminUsers', 'renderAdminCompanies', 'renderAdminDepts', 'renderAdminCategories', 'renderAdminChecklists', 'renderAdminStores'].forEach(fn => {
+                        if (typeof window[fn] === 'function') window[fn]();
+                        else if (typeof eval(fn) === 'function') eval(fn)();
+                    });
 
                 } catch (error) {
-                    statusText.innerText = 'Erro na Importação';
+                    statusText.innerText = 'Falha na Importação';
                     progressBar.style.background = '#ef4444';
                     logMessage(error.message, true);
                     btnStartImport.disabled = false;
@@ -5375,9 +5379,8 @@ function renderScheduledAudits() {
             };
 
             reader.onerror = () => {
-                logMessage('Erro fatal ao ler o arquivo selecionado.', true);
+                logMessage('Erro ao ler o arquivo.', true);
                 btnStartImport.disabled = false;
-                statusText.innerText = 'Falha na leitura';
             };
 
             reader.readAsArrayBuffer(file);
