@@ -246,8 +246,8 @@
             <div id="audit-flow" class="page content-section hidden">
                 <div class="page-header">
                     <div>
-                        <h2>Nova Auditoria</h2>
-                        <p>Siga os passos para realizar o checklist da loja</p>
+                        <h2 id="audit-flow-title">Nova Auditoria</h2>
+                        <p id="audit-flow-subtitle">Siga os passos para realizar o checklist da loja</p>
                     </div>
                 </div>
                 <div class="step-bar" id="audit-progress-bar">
@@ -528,6 +528,16 @@
 
                 <!-- NOVO: Tab de Dashboard de Rotinas -->
                 <div id="dash-routine" class="tab-content">
+                    <!-- ÁREA DE INÍCIO DE ROTINAS (ISOLADA) -->
+                    <div style="margin-bottom: 32px;">
+                        <h3 style="margin-bottom:16px; font-size:1.1rem; color: var(--secondary); display:flex; align-items:center; gap:8px;">
+                            <i class="ph-fill ph-play-circle"></i> Iniciar Nova Rotina do Setor
+                        </h3>
+                        <div id="routine-start-grid" class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                            <!-- Cards de Rotina serão injetados aqui -->
+                        </div>
+                    </div>
+
                     <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 24px;">
                         <div class="glass kpi-card kpi-secondary">
                             <span class="kpi-label"><i class="ph ph-list-checks"></i> Rotinas Realizadas</span>

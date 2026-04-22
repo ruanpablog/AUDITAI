@@ -840,73 +840,11 @@ const _genChecksum = (str) => {
         if (!grid) return;
         grid.innerHTML = '';
 
-        // 1. Mostrar POPs Legados (se houver)
+        // 1. Mostrar APENAS POPs de Auditoria de Loja (não rotinas)
         let pops = db.pops || [];
         if (currentUser && currentUser.role !== 'admin' && currentUser.deptId) {
             pops = pops.filter(p => p.dept_id === currentUser.deptId);
         }
-
-        // 2. Mostrar "Checklists de Rotina" Dinamicamente Baseados no Campo 'fluxo'
-        const routineItems = db.checklistItems.filter(i => i.fluxo === 'rotina' && i.status === 'Ativo');
-        
-        // Agrupar itens de rotina por departamento
-        const routineDepts = {};
-        routineItems.forEach(item => {
-            if (!routineDepts[item.dept_id]) routineDepts[item.dept_id] = [];
-            routineDepts[item.dept_id].push(item);
-        });
-
-        // Filtrar departamentos do usuário se não for admin
-        let deptsToShow = Object.keys(routineDepts);
-        if (currentUser && currentUser.role !== 'admin' && currentUser.deptId) {
-            deptsToShow = deptsToShow.filter(dId => dId === currentUser.deptId);
-        }
-
-        // Renderizar Cards de Checklists de Rotina (Gerentes)
-        deptsToShow.forEach(deptId => {
-            const itemsInDept = routineDepts[deptId];
-            
-            // Verificar se esses itens já são cobertos por um POP individual
-            // Se todos os itens do depto já estão em algum POP, não mostramos o card genérico
-            const allItemsCoveredByPops = itemsInDept.every(item => 
-                pops.some(pop => pop.items && pop.items.includes(item.id))
-            );
-            
-            if (allItemsCoveredByPops && pops.some(p => p.dept_id === deptId)) {
-                return; // Pular card genérico se já existe POP específico
-            }
-
-            const dept = db.departments.find(d => d.id === deptId);
-            const deptName = dept ? dept.name : 'Setor';
-
-            const card = document.createElement('div');
-            card.className = 'glass select-card';
-            card.style = "display: flex; flex-direction: column; text-align: left; padding: 20px; align-items: start; border-left: 4px solid var(--accent);";
-            
-            card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; width:100%; margin-bottom:12px;">
-                    <i class="ph ph-list-checks" style="font-size: 2rem; color: var(--accent);"></i>
-                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-                        <span class="badge badge-accent">ROTINA DIÁRIA</span>
-                        <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">${deptName}</span>
-                    </div>
-                </div>
-                <h4 style="margin: 0 0 8px 0; font-size: 1.1rem;">Checklist de Gerente - ${deptName}</h4>
-                <p style="font-size: 0.85rem; color: var(--text-muted); flex: 1; margin-bottom: 16px;">Checklist específico para acompanhamento operacional do gerente/encarregado.</p>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">
-                    <i class="ph ph-info"></i> ${itemsInDept.length} itens a verificar
-                </div>
-                <button class="btn btn-accent btn-full btn-start-routine" data-dept="${deptId}">
-                    Iniciar Rotina <i class="ph ph-play"></i>
-                </button>
-            `;
-            
-            card.querySelector('.btn-start-routine').addEventListener('click', () => {
-                startRoutineFlow(deptId, itemsInDept);
-            });
-
-            grid.appendChild(card);
-        });
 
         // Renderizar POPs Legados (se ainda forem usados)
         pops.forEach(pop => {
@@ -1048,6 +986,14 @@ const _genChecksum = (str) => {
             if (!window._signatureDone) return;
 
             const signature = window._sigCanvas.toDataURL();
+            
+            // Set mock activePopAwareness for Title and Context
+            const dept = db.departments.find(d => d.id === deptId);
+            window.activePopAwareness = {
+                name: (dept ? dept.name : 'Setor'),
+                type: 'rotina'
+            };
+
             startAuditFlow(deptId, items.map(i => i.id || i), auditorName, signature, storeId, 'rotina');
         };
     };
@@ -1259,6 +1205,17 @@ const _genChecksum = (str) => {
         document.querySelectorAll('.audit-step').forEach(s => s.classList.add('hidden'));
         document.getElementById('step-3').classList.remove('hidden');
 
+        // Dinamizar Título da Seção
+        const flowTitle = document.getElementById('audit-flow-title');
+        const flowSubtitle = document.getElementById('audit-flow-subtitle');
+        if (type === 'rotina') {
+            if (flowTitle) flowTitle.innerText = 'Rotina do Setor';
+            if (flowSubtitle) flowSubtitle.innerText = 'Validação operacional do gerente/encarregado';
+        } else {
+            if (flowTitle) flowTitle.innerText = 'Nova Auditoria';
+            if (flowSubtitle) flowSubtitle.innerText = 'Siga os passos para realizar o checklist da loja';
+        }
+
         const store = db.stores.find(s => s.id === storeId);
         const storeTitle = document.getElementById('current-store-title-step3');
         if (storeTitle) storeTitle.innerText = store ? store.name : 'Loja';
@@ -1270,7 +1227,10 @@ const _genChecksum = (str) => {
         if (badgeContainer) {
             badgeContainer.innerHTML = `
                 <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-                    <span class="badge badge-primary" style="padding:6px 12px; font-size:0.75rem;"><i class="ph ph-file-text"></i> PROCEDIMENTO (POP)</span>
+                    <span class="badge ${type === 'rotina' ? 'badge-secondary' : 'badge-primary'}" style="padding:6px 12px; font-size:0.75rem;">
+                        <i class="ph ${type === 'rotina' ? 'ph-list-checks' : 'ph-file-text'}"></i> 
+                        ${type === 'rotina' ? 'ROTINA OPERACIONAL' : 'PROCEDIMENTO (POP)'}
+                    </span>
                 </div>
             `;
         }
@@ -1732,7 +1692,15 @@ const _genChecksum = (str) => {
         // Limpar temporários
         currentAudit.tempResponses = [];
 
-        // Voltar para seleção de departamentos
+        // NOVO: Se for uma "Rotina do Setor", finaliza a auditoria INTEIRA agora mesmo
+        // Sem voltar para a seleção de setores (Step 2)
+        if (currentAudit.type === 'rotina') {
+            currentAudit.returnDate = null; // Rotinas não costumam ter data de retorno bloqueante
+            saveAuditFinal();
+            return;
+        }
+
+        // Voltar para seleção de departamentos (Apenas para auditoria padrão)
         document.getElementById('step-cat-selection').classList.add('hidden');
         document.getElementById('step-2').classList.remove('hidden');
         updateProgressBar(1);
@@ -1921,6 +1889,10 @@ const _genChecksum = (str) => {
         document.getElementById('step-3').classList.add('hidden');
         if (currentAudit.type === 'pop') {
             switchSection('pops-view');
+        } else if (currentAudit.type === 'rotina') {
+            switchSection('dashboard-view');
+            const rotinaTab = document.querySelector('.tab-btn[data-tab="dash-routine"]');
+            if (rotinaTab) rotinaTab.click();
         } else {
             document.getElementById('step-cat-selection').classList.remove('hidden');
             updateProgressBar(1.5);
@@ -2581,8 +2553,55 @@ const _genChecksum = (str) => {
         renderRanking(standardAudits);
         renderClassificationChart(standardAudits);
         renderEvolutionRanking(standardAudits);
-        renderRoutineHistory(routineAudits); // Renderizar histórico de rotinas
+        renderRoutineHistory(routineAudits); 
+        renderRoutineStartCards(); // Novo: Mostrar botões de início de rotina no Dashboard
         populateDashboardStores();
+    }
+
+    function renderRoutineStartCards() {
+        const grid = document.getElementById('routine-start-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const routineItems = db.checklistItems.filter(i => i.fluxo === 'rotina' && i.status === 'Ativo');
+        const routineDepts = {};
+        routineItems.forEach(item => {
+            if (!routineDepts[item.dept_id]) routineDepts[item.dept_id] = [];
+            routineDepts[item.dept_id].push(item);
+        });
+
+        let deptsToShow = Object.keys(routineDepts);
+        if (currentUser && currentUser.role !== 'admin' && currentUser.deptId) {
+            deptsToShow = deptsToShow.filter(dId => dId === currentUser.deptId);
+        }
+
+        deptsToShow.forEach(deptId => {
+            const itemsInDept = routineDepts[deptId];
+            const dept = db.departments.find(d => d.id === deptId);
+            const deptName = dept ? dept.name : 'Setor';
+
+            const card = document.createElement('div');
+            card.className = 'glass select-card';
+            card.style = "display: flex; flex-direction: column; text-align: left; padding: 24px; align-items: start; border-left: 4px solid var(--secondary); background: rgba(59, 130, 246, 0.05);";
+            
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; width:100%; margin-bottom:12px;">
+                    <i class="ph-fill ph-list-checks" style="font-size: 2.5rem; color: var(--secondary);"></i>
+                    <span class="badge badge-secondary" style="font-size:0.6rem;">ROTINA DISPONÍVEL</span>
+                </div>
+                <h4 style="margin: 0 0 8px 0; font-size: 1.2rem; color:var(--text-body);">${deptName}</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Clique abaixo para iniciar a validação operacional deste setor.</p>
+                <button class="btn btn-secondary btn-full btn-start-routine-dash">
+                    Iniciar Auditoria por Setor <i class="ph ph-play"></i>
+                </button>
+            `;
+            
+            card.querySelector('.btn-start-routine-dash').addEventListener('click', () => {
+                startRoutineFlow(deptId, itemsInDept);
+            });
+
+            grid.appendChild(card);
+        });
     }
 
     function renderRoutineHistory(routineAudits) {
