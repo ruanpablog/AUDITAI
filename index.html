@@ -31,6 +31,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <!-- Tesseract.js para OCR local de imagens -->
     <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- SheetJS para importação de CSV/Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="styles.css">
@@ -641,6 +643,9 @@
                         <h2>Painel Administrativo</h2>
                         <p>Gerencie configurações do sistema</p>
                     </div>
+                    <button class="btn btn-secondary" id="btn-show-bulk-import">
+                        <i class="ph ph-file-arrow-up"></i> Importar Dados (.csv/.xlsx)
+                    </button>
                 </div>
 
                 <div class="tabs" style="flex-wrap: wrap;">
@@ -1541,6 +1546,55 @@ FOR ALL USING (true) WITH CHECK (true);</pre>
         </div>
         <div id="doc-viewer-content" style="width: 95%; max-width: 900px; height: 80vh; background: white; border-radius: 8px; overflow: hidden;">
             <!-- Iframe or Image will be injected here -->
+        </div>
+    </div>
+
+    <!-- Modal: Bulk Import -->
+    <div id="modal-bulk-import" class="modal">
+        <div class="modal-content" style="max-width: 650px;">
+            <div class="modal-header">
+                <h2><i class="ph ph-file-arrow-up"></i> Importação em Massa</h2>
+                <button class="btn-icon" onclick="closeModal('modal-bulk-import')"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: var(--text-muted); font-size: 0.95rem;">
+                    Siga o modelo padrão para importar Empresas, Filiais, Departamentos, Checklists e Usuários simultaneamente.
+                </p>
+                
+                <div style="background: rgba(0,0,0,0.1); padding: 16px; border-radius: 8px; margin-bottom: 24px; border: 1px solid var(--border);">
+                    <h4 style="margin-bottom: 8px; font-size: 0.9rem;">1. Baixe o Modelo</h4>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Seu arquivo deve conter exatamente as colunas do modelo para funcionar.</p>
+                    <button class="btn btn-sm btn-outline" id="btn-download-import-template">
+                        <i class="ph ph-download-simple"></i> Download Template (.csv)
+                    </button>
+                </div>
+
+                <div id="import-drop-zone" style="border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(255,255,255,0.02);">
+                    <i class="ph ph-cloud-arrow-up" style="font-size: 3.5rem; color: var(--primary); margin-bottom: 16px;"></i>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Arraste ou clique para selecionar</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Suporta arquivos .csv, .xlsx e .xls</p>
+                    <input type="file" id="bulk-import-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" style="display: none;">
+                    <div id="selected-import-filename" style="margin-top: 12px; font-weight: 600; font-size: 0.9rem; color: var(--primary);" class="hidden"></div>
+                </div>
+
+                <div id="import-status-container" class="hidden" style="margin-top: 24px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+                        <span id="import-status-text" style="font-size: 0.9rem; font-weight: 600;">Processando...</span>
+                        <span id="import-progress-pct" style="font-size: 0.85rem; color: var(--text-muted);">0%</span>
+                    </div>
+                    <div style="height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+                        <div id="import-progress-bar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.3s;"></div>
+                    </div>
+                    
+                    <div id="import-log" style="margin-top: 20px; max-height: 200px; overflow-y: auto; background: #000; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.75rem; color: #10b981;">
+                        <!-- Logs via JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" id="import-modal-footer" style="margin-top: 24px; display: flex; gap: 12px;">
+                <button class="btn btn-outline" onclick="closeModal('modal-bulk-import')" style="flex:1;">Fechar</button>
+                <button class="btn btn-primary" id="btn-start-import" style="flex:1;" disabled>Iniciar Importação</button>
+            </div>
         </div>
     </div>
 

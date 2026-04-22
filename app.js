@@ -5081,6 +5081,309 @@ function renderScheduledAudits() {
         document.addEventListener(name, resetInactivityTimer, true);
     });
     resetInactivityTimer();
+
+    // ==========================================
+    // BULK IMPORT LOGIC (CSV/Excel)
+    // ==========================================
+    const btnShowBulkImport = document.getElementById('btn-show-bulk-import');
+    const modalBulkImport = document.getElementById('modal-bulk-import');
+    const btnDownloadTemplate = document.getElementById('btn-download-import-template');
+    const bulkImportFileInput = document.getElementById('bulk-import-input');
+    const dropZone = document.getElementById('import-drop-zone');
+    const fileNameDisplay = document.getElementById('selected-import-filename');
+    const btnStartImport = document.getElementById('btn-start-import');
+    const statusContainer = document.getElementById('import-status-container');
+    const statusText = document.getElementById('import-status-text');
+    const progressBar = document.getElementById('import-progress-bar');
+    const progressPct = document.getElementById('import-progress-pct');
+    const importLog = document.getElementById('import-log');
+
+    // Make closeModal available globally if not already for the modal header
+    window.closeModal = window.closeModal || function(modalId) {
+        document.getElementById(modalId)?.classList.add('hidden');
+    };
+
+    if (btnShowBulkImport) {
+        btnShowBulkImport.addEventListener('click', () => {
+            modalBulkImport.classList.remove('hidden');
+            // Reset UI
+            bulkImportFileInput.value = '';
+            fileNameDisplay.classList.add('hidden');
+            fileNameDisplay.innerText = '';
+            btnStartImport.disabled = true;
+            statusContainer.classList.add('hidden');
+            importLog.innerHTML = '';
+            progressBar.style.width = '0%';
+            progressPct.innerText = '0%';
+        });
+    }
+
+    if (btnDownloadTemplate) {
+        btnDownloadTemplate.addEventListener('click', () => {
+            const templateData = [
+                ["nome_empresa", "cnpj_empresa", "nome_filial", "cidade_filial", "departamento", "categoria_checklist", "item_checklist", "nome_usuario", "email_usuario", "cargo_usuario", "senha_usuario"],
+                ["Exemplo Corp", "12.345.678/0001-90", "Loja Matriz", "São Paulo", "Frente de Loja", "Atendimento", "O caixa está limpo e organizado?", "João Silva", "joao@exemplocorp.com", "Caixa", "Auditai123"]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(templateData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Template_Importacao");
+            XLSX.writeFile(wb, "Auditai_Template_Importacao.xlsx");
+        });
+    }
+
+    if (dropZone) {
+        dropZone.addEventListener('click', () => bulkImportFileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--primary)';
+        });
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--border)';
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--border)';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                bulkImportFileInput.files = e.dataTransfer.files;
+                handleFileSelect();
+            }
+        });
+    }
+
+    if (bulkImportFileInput) {
+        bulkImportFileInput.addEventListener('change', handleFileSelect);
+    }
+
+    function handleFileSelect() {
+        if (!bulkImportFileInput) return;
+        const file = bulkImportFileInput.files[0];
+        if (file) {
+            fileNameDisplay.innerText = file.name;
+            fileNameDisplay.classList.remove('hidden');
+            btnStartImport.disabled = false;
+        } else {
+            fileNameDisplay.classList.add('hidden');
+            btnStartImport.disabled = true;
+        }
+    }
+
+    function logMessage(msg, isError = false) {
+        const div = document.createElement('div');
+        div.style.color = isError ? '#ef4444' : '#10b981';
+        div.style.marginBottom = '4px';
+        div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        importLog.prepend(div);
+    }
+
+    if (btnStartImport) {
+        btnStartImport.addEventListener('click', async () => {
+            const file = bulkImportFileInput.files[0];
+            if (!file) return;
+
+            btnStartImport.disabled = true;
+            statusContainer.classList.remove('hidden');
+            importLog.innerHTML = '';
+            statusText.innerText = 'Lendo arquivo...';
+            progressBar.style.width = '10%';
+            progressPct.innerText = '10%';
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" }); 
+                    
+                    if (rows.length === 0) {
+                        throw new Error("Arquivo vazio ou sem dados válidos.");
+                    }
+
+                    statusText.innerText = 'Processando dados...';
+                    progressBar.style.width = '30%';
+                    progressPct.innerText = '30%';
+
+                    let stats = { empresas: 0, filiais: 0, departamentos: 0, categorias: 0, checklists: 0, usuarios: 0, erros: 0 };
+
+                    const generateId = (prefix) => prefix + '_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+                    const normalize = (str) => String(str || '').trim().toLowerCase();
+
+                    let companiesMap = new Map();
+                    if(db.companies) db.companies.forEach(c => companiesMap.set(normalize(c.cnpj), c.id));
+                    else db.companies = [];
+
+                    let storesMap = new Map();
+                    if(db.stores) db.stores.forEach(s => storesMap.set(`${s.companyId}_${normalize(s.name)}`, s.id));
+                    else db.stores = [];
+
+                    let deptsMap = new Map();
+                    if(db.departments) db.departments.forEach(d => deptsMap.set(normalize(d.name), d.id));
+                    else db.departments = [];
+
+                    let catsMap = new Map();
+                    if(db.categories) db.categories.forEach(c => catsMap.set(`${c.dept_id}_${normalize(c.name)}`, c.id));
+                    else db.categories = [];
+                    
+                    let usersMap = new Map();
+                    if(db.users) db.users.forEach(u => usersMap.set(normalize(u.email), u.id));
+                    else db.users = [];
+
+                    if(!db.checklistItems) db.checklistItems = [];
+
+                    logMessage(`Iniciando processamento de ${rows.length} linhas.`);
+
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
+                        const progress = 30 + Math.floor((i / rows.length) * 60);
+                        progressBar.style.width = `${progress}%`;
+                        progressPct.innerText = `${progress}%`;
+
+                        if(!row.nome_empresa && !row.nome_usuario && !row.departamento) continue;
+
+                        try {
+                            let compId = null;
+                            if (row.nome_empresa && row.cnpj_empresa) {
+                                const cKey = normalize(row.cnpj_empresa);
+                                if (companiesMap.has(cKey)) {
+                                    compId = companiesMap.get(cKey);
+                                } else {
+                                    compId = generateId('comp');
+                                    db.companies.push({
+                                        id: compId, name: String(row.nome_empresa).trim(), cnpj: String(row.cnpj_empresa).trim(),
+                                        city: '', address: '', phone: '', email: '', logo: '', status: 'Ativo'
+                                    });
+                                    companiesMap.set(cKey, compId);
+                                    stats.empresas++;
+                                    logMessage(`Nova empresa: ${row.nome_empresa}`);
+                                }
+                            }
+
+                            let storeId = null;
+                            if (compId && row.nome_filial) {
+                                const sKey = `${compId}_${normalize(row.nome_filial)}`;
+                                if (storesMap.has(sKey)) {
+                                    storeId = storesMap.get(sKey);
+                                } else {
+                                    storeId = generateId('store');
+                                    db.stores.push({
+                                        id: storeId, companyId: compId, name: String(row.nome_filial).trim(), city: String(row.cidade_filial || '').trim()
+                                    });
+                                    storesMap.set(sKey, storeId);
+                                    stats.filiais++;
+                                    logMessage(`Nova filial: ${row.nome_filial}`);
+                                }
+                            }
+
+                            let deptId = null;
+                            if (row.departamento) {
+                                const dKey = normalize(row.departamento);
+                                if (deptsMap.has(dKey)) {
+                                    deptId = deptsMap.get(dKey);
+                                } else {
+                                    deptId = generateId('d');
+                                    db.departments.push({ id: deptId, name: String(row.departamento).trim(), weight: 10 });
+                                    deptsMap.set(dKey, deptId);
+                                    stats.departamentos++;
+                                }
+                            }
+
+                            let catId = null;
+                            if (deptId && row.categoria_checklist) {
+                                const catKey = `${deptId}_${normalize(row.categoria_checklist)}`;
+                                if (catsMap.has(catKey)) {
+                                    catId = catsMap.get(catKey);
+                                } else {
+                                    catId = generateId('cat');
+                                    db.categories.push({
+                                        id: catId, dept_id: deptId, name: String(row.categoria_checklist).trim(),
+                                        weight_value: 10, weight: catsMap.size + 1, status: 'Ativo'
+                                    });
+                                    catsMap.set(catKey, catId);
+                                    stats.categorias++;
+                                }
+                            }
+
+                            if (deptId && row.item_checklist) {
+                                const qText = String(row.item_checklist).trim();
+                                const exists = db.checklistItems.some(item => 
+                                    item.dept_id === deptId && item.cat_id === (catId || 'none') && normalize(item.question) === normalize(qText)
+                                );
+                                if (!exists) {
+                                    db.checklistItems.push({
+                                        id: generateId('i'), dept_id: deptId, cat_id: catId || 'none', question: qText,
+                                        fluxo: 'auditoria', status: 'Ativo', eh_critico: false
+                                    });
+                                    stats.checklists++;
+                                }
+                            }
+
+                            if (row.nome_usuario && row.email_usuario) {
+                                const uKey = normalize(row.email_usuario);
+                                if (!usersMap.has(uKey)) {
+                                    const uId = generateId('u');
+                                    db.users.push({
+                                        id: uId, name: String(row.nome_usuario).trim(), email: String(row.email_usuario).trim(),
+                                        password: row.senha_usuario ? String(row.senha_usuario).trim() : 'Auditai123',
+                                        role: String(row.cargo_usuario || '').toLowerCase().includes('admin') ? 'admin' : 'gerente',
+                                        companyId: compId || null, approved: true, photo: null
+                                    });
+                                    usersMap.set(uKey, uId);
+                                    stats.usuarios++;
+                                    logMessage(`Novo usuário criado: ${row.nome_usuario} (${row.email_usuario})`);
+                                }
+                            }
+                        } catch (rowErr) {
+                            stats.erros++;
+                            logMessage(`Erro linha ${i+2}: ${rowErr.message}`, true);
+                        }
+                    }
+
+                    statusText.innerText = 'Salvando e Sincronizando...';
+                    progressBar.style.width = '95%';
+                    progressPct.innerText = '95%';
+
+                    await saveDB(true); 
+                    
+                    statusText.innerText = 'Importação Concluída!';
+                    progressBar.style.width = '100%';
+                    progressPct.innerText = '100%';
+                    
+                    logMessage(`SUCESSO. Dados importados/criados:`, false);
+                    logMessage(`- ${stats.empresas} Empresas`, false);
+                    logMessage(`- ${stats.filiais} Filiais`, false);
+                    logMessage(`- ${stats.departamentos} Departamentos`, false);
+                    logMessage(`- ${stats.categorias} Categorias`, false);
+                    logMessage(`- ${stats.checklists} Itens de Checklist`, false);
+                    logMessage(`- ${stats.usuarios} Usuários`, false);
+                    if (stats.erros > 0) logMessage(`- ${stats.erros} Erros (veja acima)`, true);
+
+                    if (typeof renderAdminUsers === 'function') renderAdminUsers();
+                    if (typeof renderAdminCompanies === 'function') renderAdminCompanies();
+                    if (typeof renderAdminDepts === 'function') renderAdminDepts();
+                    if (typeof renderAdminCategories === 'function') renderAdminCategories();
+                    if (typeof renderAdminChecklists === 'function') renderAdminChecklists();
+                    if (typeof renderAdminStores === 'function') renderAdminStores();
+
+                } catch (error) {
+                    statusText.innerText = 'Erro na Importação';
+                    progressBar.style.background = '#ef4444';
+                    logMessage(error.message, true);
+                    btnStartImport.disabled = false;
+                }
+            };
+
+            reader.onerror = () => {
+                logMessage('Erro fatal ao ler o arquivo selecionado.', true);
+                btnStartImport.disabled = false;
+                statusText.innerText = 'Falha na leitura';
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
     await loadDB();
     updateAuthUI();
 });
