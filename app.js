@@ -2677,9 +2677,14 @@ const _genChecksum = (str) => {
                     <td><strong>${storeName}</strong></td>
                     <td>${aud.auditor || '--'}</td>
                     <td><span class="badge ${aud.percentage >= 80 ? 'badge-success' : (aud.percentage >= 60 ? 'badge-warning' : 'badge-danger')}">${aud.percentage}%</span></td>
-                    <td>
+                    <td style="display:flex; gap:6px; align-items:center;">
                         <button class="btn btn-ghost btn-sm" onclick="showReportById('${aud.id}')" title="Ver Relatório">
                             <i class="ph ph-file-text" style="font-size:1.2rem; color:var(--primary);"></i>
+                        </button>
+                        <button class="btn btn-ghost btn-sm" onclick="deleteRoutineAudit('${aud.id}')" title="Excluir Relatório"
+                            style="color:var(--danger); transition: transform 0.15s;" 
+                            onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
+                            <i class="ph ph-trash" style="font-size:1.2rem;"></i>
                         </button>
                     </td>
                 </tr>
@@ -2691,6 +2696,45 @@ const _genChecksum = (str) => {
     window.showReportById = function(id) {
         const aud = db.audits.find(a => a.id === id);
         if(aud) showReport(aud);
+    };
+
+    // Helper global para excluir um relatório de rotina
+    window.deleteRoutineAudit = function(id) {
+        const aud = db.audits.find(a => a.id === id);
+        if (!aud) return;
+
+        const store = db.stores.find(s => s.id === aud.storeId);
+        const storeName = store ? store.name : 'loja';
+        let dateStr = '';
+        try { dateStr = new Date(aud.date).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch(e){}
+
+        if (!confirm(`Deseja excluir permanentemente o relatório de rotina?\n\nFilial: ${storeName}\nData: ${dateStr}\n\nEsta ação não pode ser desfeita.`)) return;
+
+        // Remove do array de auditorias
+        db.audits = db.audits.filter(a => a.id !== id);
+
+        // Salva localmente e sincroniza com a nuvem
+        saveDB(true)
+            .then(() => {
+                // Re-renderiza tabelas em tempo real
+                const liveRoutineAudits = (db.audits || []).filter(a => a && a.type === 'rotina');
+                const rAvg = liveRoutineAudits.length > 0
+                    ? Math.round(liveRoutineAudits.reduce((s, a) => s + (a.percentage || 0), 0) / liveRoutineAudits.length)
+                    : 0;
+                const kpiTotal = document.getElementById('kpi-routine-total');
+                const kpiAvg = document.getElementById('kpi-routine-avg');
+                if (kpiTotal) kpiTotal.innerText = liveRoutineAudits.length;
+                if (kpiAvg) kpiAvg.innerText = rAvg + '%';
+                renderRoutineRanking(liveRoutineAudits);
+                renderRoutineHistory(liveRoutineAudits);
+            })
+            .catch(err => {
+                console.error('Erro ao excluir relatório:', err);
+                alert('Relatório excluído localmente, mas houve erro ao sincronizar: ' + err.message);
+                const liveRoutineAudits = (db.audits || []).filter(a => a && a.type === 'rotina');
+                renderRoutineRanking(liveRoutineAudits);
+                renderRoutineHistory(liveRoutineAudits);
+            });
     };
 
     function renderRoutineRanking(routineAudits) {
