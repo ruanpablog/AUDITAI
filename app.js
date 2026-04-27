@@ -2806,19 +2806,36 @@ const _genChecksum = (str) => {
         if(dashChartClass) dashChartClass.destroy();
         if(!ctxClass) return;
 
+        // Calcular média real para sincronizar com o número central
+        const avgPct = audits.length > 0
+            ? Math.round(audits.reduce((sum, a) => sum + (a.percentage || 0), 0) / audits.length)
+            : 0;
+
+        // Atualizar o número central do donut (gauge-score)
+        const gaugeEl = document.getElementById('gauge-score');
+        if (gaugeEl) gaugeEl.innerText = avgPct + '%';
+
         const counts = { 'Excelente': 0, 'Bom': 0, 'Regular': 0, 'Insuficiente': 0 };
         audits.forEach(a => {
             const rating = a.percentage >= 90 ? 'Excelente' : (a.percentage >= 80 ? 'Bom' : (a.percentage >= 60 ? 'Regular' : 'Insuficiente'));
             counts[rating]++;
         });
 
+        // Se não houver dados, mostrar fatia vazia neutra
+        const hasData = Object.values(counts).some(v => v > 0);
+        const chartData    = hasData ? Object.values(counts) : [1];
+        const chartLabels  = hasData ? Object.keys(counts)   : ['Sem dados'];
+        const chartColors  = hasData
+            ? ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']
+            : ['rgba(255,255,255,0.08)'];
+
         dashChartClass = new Chart(ctxClass, {
             type: 'doughnut',
             data: {
-                labels: Object.keys(counts),
+                labels: chartLabels,
                 datasets: [{
-                    data: Object.values(counts),
-                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+                    data: chartData,
+                    backgroundColor: chartColors,
                     borderWidth: 0
                 }]
             },
