@@ -3358,7 +3358,7 @@ const _genChecksum = (str) => {
         audits.forEach(aud => {
             const store = db.stores.find(s => s.id === aud.storeId);
             const storeName = store ? store.name : 'Loja Desconhecida';
-            const dateStr = new Date(aud.date).toLocaleDateString('pt-BR') + ' ' + new Date(aud.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+            const dateStr = new Date(aud.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
             
             const badgeClass = aud.percentage >= 80 ? 'badge-success' : (aud.percentage >= 60 ? 'badge-warning' : 'badge-danger');
             let rating = 'Bom';
