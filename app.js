@@ -915,16 +915,37 @@ const _genChecksum = (str) => {
             try {
                 btnManualSync.disabled = true;
                 btnManualSync.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Sincronizando...';
-                
-                await loadDB();
-                updateAuthUI();
-                
-                // Forçar atualização de views se estiverem abertas
+
+                // 1. Buscar o estado atual da nuvem
+                let cloudAuditIds = new Set();
+                try {
+                    const cloudId = getCloudId();
+                    const { data, error } = await supabase.from('app_state').select('db_data').eq('id', cloudId).single();
+                    if (!error && data && data.db_data && Array.isArray(data.db_data.audits)) {
+                        data.db_data.audits.forEach(a => { if (a && a.id) cloudAuditIds.add(a.id); });
+                    }
+                } catch (fetchErr) {
+                    console.warn('Não foi possível buscar IDs da nuvem:', fetchErr.message);
+                }
+
+                // 2. Verificar quais auditorias locais NÃO estão na nuvem (foram criadas offline)
+                const offlineAudits = (db.audits || []).filter(a => a && a.id && !cloudAuditIds.has(a.id));
+
+                if (offlineAudits.length === 0) {
+                    alert('Nenhum registro offline pendente. Tudo já está sincronizado!');
+                    return;
+                }
+
+                // 3. Enviar apenas as auditorias que faltam na nuvem
+                console.log(`Sincronizando ${offlineAudits.length} registro(s) offline...`);
+                await saveDB(true);
+
+                // 4. Atualizar views
                 const activeSection = Array.from(contentSections).find(s => !s.classList.contains('hidden'));
                 if (activeSection && activeSection.id === 'audits-list-view') renderAuditHistory();
                 if (activeSection && activeSection.id === 'dashboard-view') renderDashboard();
-                
-                alert('Sincronização concluída com sucesso!');
+
+                alert(`Sincronização concluída! ${offlineAudits.length} registro(s) enviado(s) para a nuvem.`);
             } catch (err) {
                 console.error("Manual Sync Error:", err);
                 alert('Erro ao sincronizar: ' + err.message);
@@ -2631,23 +2652,30 @@ const _genChecksum = (str) => {
         if(!tbody) return;
         tbody.innerHTML = '';
 
-        if(routineAudits.length === 0) {
+        // Sempre buscar direto do db.audits para garantir dados em tempo real
+        const liveRoutineAudits = routineAudits && routineAudits.length > 0
+            ? routineAudits
+            : (db.audits || []).filter(a => a && a.type === 'rotina');
+
+        if(liveRoutineAudits.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhuma rotina registrada.</td></tr>';
             return;
         }
 
-        const sorted = routineAudits.sort((a,b) => new Date(b.date) - new Date(a.date));
+        const sorted = [...liveRoutineAudits].sort((a,b) => new Date(b.date) - new Date(a.date));
 
         tbody.innerHTML = sorted.map(aud => {
             const store = db.stores.find(s => s.id === aud.storeId);
             const storeName = store ? store.name : 'Loja';
-            const dateStr = new Date(aud.date).toLocaleDateString('pt-BR');
+            // Apenas dd/mm/yyyy
+            let dateStr = '--/--/----';
+            try { dateStr = new Date(aud.date).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch(e){}
             
             return `
                 <tr>
-                    <td><div style="font-size:0.8rem;">${dateStr}</div></td>
+                    <td><div style="font-size:0.85rem; font-weight:600;">${dateStr}</div></td>
                     <td><strong>${storeName}</strong></td>
-                    <td>${aud.auditor}</td>
+                    <td>${aud.auditor || '--'}</td>
                     <td><span class="badge ${aud.percentage >= 80 ? 'badge-success' : (aud.percentage >= 60 ? 'badge-warning' : 'badge-danger')}">${aud.percentage}%</span></td>
                     <td>
                         <button class="btn btn-ghost btn-sm" onclick="showReportById('${aud.id}')" title="Ver Relatório">
@@ -2670,18 +2698,23 @@ const _genChecksum = (str) => {
         if(!tbody) return;
         tbody.innerHTML = '';
 
-        if(routineAudits.length === 0) {
+        // Sempre buscar direto do db.audits para garantir dados em tempo real
+        const liveRoutineAudits = routineAudits && routineAudits.length > 0
+            ? routineAudits
+            : (db.audits || []).filter(a => a && a.type === 'rotina');
+
+        if(liveRoutineAudits.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum dado de rotina encontrado.</td></tr>';
             return;
         }
 
         // Agrupar por Gestor
         const gestoresScore = {};
-        routineAudits.forEach(aud => {
+        liveRoutineAudits.forEach(aud => {
             const store = db.stores.find(s => s.id === aud.storeId);
-            const gestor = store ? store.managerName : aud.auditor;
+            const gestor = (store && store.managerName) ? store.managerName : (aud.auditor || 'Desconhecido');
             if(!gestoresScore[gestor]) gestoresScore[gestor] = { t: 0, c: 0, last: aud.date };
-            gestoresScore[gestor].t += aud.percentage;
+            gestoresScore[gestor].t += (aud.percentage || 0);
             gestoresScore[gestor].c++;
             if(new Date(aud.date) > new Date(gestoresScore[gestor].last)) gestoresScore[gestor].last = aud.date;
         });
@@ -2690,12 +2723,14 @@ const _genChecksum = (str) => {
 
         tbody.innerHTML = sorted.map(([name, data], idx) => {
             const avg = Math.round(data.t / data.c);
+            let lastDateStr = '--/--/----';
+            try { lastDateStr = new Date(data.last).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch(e){}
             return `
                 <tr>
                     <td><span class="badge ${idx < 3 ? 'badge-secondary' : 'badge-ghost'}">${idx + 1}º</span></td>
                     <td><strong>${name}</strong></td>
                     <td style="font-weight:700; color:var(--secondary);">${avg}%</td>
-                    <td style="font-size:0.8rem; color:var(--text-muted);">${new Date(data.last).toLocaleDateString()}</td>
+                    <td style="font-size:0.85rem; color:var(--text-muted);">${lastDateStr}</td>
                 </tr>
             `;
         }).join('');
@@ -4239,6 +4274,20 @@ const _genChecksum = (str) => {
             if (tabId === 'dash-evo-ranking') {
                 renderEvolutionRanking();
             }
+
+            // Re-renderizar em tempo real ao clicar na aba de Rotinas do Setor
+            if (tabId === 'dash-routine') {
+                const liveRoutineAudits = (db.audits || []).filter(a => a && a.type === 'rotina');
+                const rAvg = liveRoutineAudits.length > 0
+                    ? Math.round(liveRoutineAudits.reduce((s, a) => s + (a.percentage || 0), 0) / liveRoutineAudits.length)
+                    : 0;
+                const kpiTotal = document.getElementById('kpi-routine-total');
+                const kpiAvg = document.getElementById('kpi-routine-avg');
+                if (kpiTotal) kpiTotal.innerText = liveRoutineAudits.length;
+                if (kpiAvg) kpiAvg.innerText = rAvg + '%';
+                renderRoutineRanking(liveRoutineAudits);
+                renderRoutineHistory(liveRoutineAudits);
+            }
         });
     });
 
@@ -4857,16 +4906,18 @@ function renderScheduledAudits() {
         const store = db.stores.find(s => s.id === audit.storeId);
         const storeName = store ? store.name : 'Loja Desconhecida';
         
-        let rdDateStr = audit.returnDate;
+        // Formatar data: apenas dd/mm/yyyy, sem hora ou informações extras
+        let rdDateStr = '--/--/----';
         try {
-            // "yyyy-mm-dd" to "dd/mm/yyyy"
-            const parts = audit.returnDate.split('-');
-            if(parts.length === 3) rdDateStr = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            if (audit.returnDate) {
+                const parts = String(audit.returnDate).split('T')[0].split('-');
+                if (parts.length === 3) rdDateStr = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
         } catch(e) {}
         
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><span style="font-weight:600;"><i class="ph ph-calendar-blank"></i> ${rdDateStr}</span></td>
+            <td><span style="font-weight:600;">${rdDateStr}</span></td>
             <td>${storeName}</td>
             <td>${audit.auditor}</td>
             <td>${statusHtml}</td>
