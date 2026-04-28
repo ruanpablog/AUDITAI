@@ -1,218 +1,181 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AuditÁI - Da Prancheta para a Performance</title>
-  <meta name="description" content="A plataforma completa para auditar processos operacionais, prevenir perdas e garantir o padrão em todas as suas lojas, do mobile ao dashboard.">
-  <link rel="stylesheet" href="landing.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuditÁI | Proteja seu Lucro e Padronize sua Operação</title>
+    <meta name="description" content="A plataforma líder em auditoria operacional. Elimine perdas, garanta o padrão em todas as filiais e tome decisões baseadas em dados reais.">
+    <link rel="stylesheet" href="landing.css">
 </head>
 <body>
 
-  <!-- Header -->
-  <header>
-    <div class="container header-container">
-      <a href="#" class="logo">Audit<span>ÁI</span></a>
-      <ul class="nav-links">
-        <li><a href="#problema">O Problema</a></li>
-        <li><a href="#solucao">A Solução</a></li>
-        <li><a href="#recursos">Recursos</a></li>
-        <li><a href="#como-funciona">Como Funciona</a></li>
-      </ul>
-      <a href="index.html" class="btn btn-primary">Acessar Plataforma</a>
-    </div>
-  </header>
-
-  <!-- Hero Section -->
-  <section class="hero" id="inicio">
-    <div class="container hero-content">
-      <div class="hero-text reveal">
-        <h1>Dê adeus às pranchetas e blinde o lucro da sua empresa com auditorias inteligentes.</h1>
-        <p>AuditÁI: A plataforma completa para auditar processos operacionais, prevenir perdas e garantir o padrão em todas as suas lojas, do mobile ao dashboard.</p>
-        <div style="display: flex; gap: 1rem;">
-          <a href="index.html" class="btn btn-accent">Começar Teste Piloto</a>
-          <a href="#recursos" class="btn" style="background: white; border: 1px solid var(--border-color); color: var(--text-main);">Saiba Mais</a>
+    <!-- Header -->
+    <header id="header">
+        <div class="container header-container">
+            <a href="#" class="logo">Audit<span>ÁI</span></a>
+            <ul class="nav-links">
+                <li><a href="#problemas">O Problema</a></li>
+                <li><a href="#recursos">Recursos</a></li>
+                <li><a href="#bi">Relatórios</a></li>
+                <li><a href="#metodo">O Método</a></li>
+            </ul>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <a href="index.html" class="btn btn-outline">Login</a>
+                <a href="index.html" class="btn btn-primary">Demo Grátis</a>
+            </div>
         </div>
-      </div>
-      <div class="hero-image-wrapper reveal" style="transition-delay: 0.2s;">
-        <img src="assets/hero_mockup.png" alt="AuditÁI App no Tablet e Dashboard no Notebook" loading="lazy">
-      </div>
-    </div>
-  </section>
+    </header>
 
-  <!-- Pain Points -->
-  <section class="pain-points" id="problema">
+    <!-- Hero -->
+    <section class="hero" id="home">
+        <div class="container hero-content">
+            <div class="hero-text reveal">
+                <h1>Sua operação no piloto automático e 100% sob controle.</h1>
+                <p>Elimine a prancheta e o erro humano. O AuditÁI é a ferramenta definitiva para redes que buscam excelência operacional e lucro blindado.</p>
+                <div style="display: flex; gap: 1.5rem;">
+                    <a href="index.html" class="btn btn-accent">Escalar Minha Operação</a>
+                    <a href="#metodo" class="btn btn-outline">Ver Como Funciona</a>
+                </div>
+            </div>
+            <div class="hero-image-wrapper reveal">
+                <img src="assets/auditai_premium_hero.png" alt="AuditAI Premium Mockup">
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Bar -->
+    <div class="stats reveal">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3>+35%</h3>
+                    <p>Eficiência Operacional</p>
+                </div>
+                <div class="stat-item">
+                    <h3>-20%</h3>
+                    <p>Perdas de Estoque</p>
+                </div>
+                <div class="stat-item">
+                    <h3>100%</h3>
+                    <p>Dados em Tempo Real</p>
+                </div>
+                <div class="stat-item">
+                    <h3>ZERO</h3>
+                    <p>Papel e Pranchetas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Problems -->
+    <section id="problemas">
+        <div class="container">
+            <div class="section-header reveal">
+                <h2>Por que sua operação está perdendo dinheiro?</h2>
+                <p>Se você não enxerga o erro, você não pode corrigi-lo. A maioria das redes sofre com os mesmos problemas silenciosos.</p>
+            </div>
+            <div class="cards-grid">
+                <div class="card reveal">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <h3>Informação Tardia</h3>
+                    <p>Planilhas manuais demoram dias para serem consolidadas. No AuditÁI, o dado chega em segundos.</p>
+                </div>
+                <div class="card reveal">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <h3>Quebra de Padrão</h3>
+                    <p>Garantir que todas as lojas sigam o mesmo manual é impossível sem uma ferramenta de auditoria rigorosa.</p>
+                </div>
+                <div class="card reveal">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg>
+                    </div>
+                    <h3>Decisão no "Escuro"</h3>
+                    <p>Decidir sem dados reais é apostar o lucro da empresa. Tenha clareza total dos gargalos operacionais.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="dashboard-preview" id="recursos">
+        <div class="container">
+            <div class="hero-content" style="direction: rtl;">
+                <div class="hero-text reveal" style="direction: ltr;">
+                    <h2>Controle total, de qualquer lugar.</h2>
+                    <p>O AuditÁI foi desenhado para ser simples na ponta (para o auditor) e poderoso no centro (para o gestor).</p>
+                    <ul style="list-style: none; color: var(--text-dim); margin-bottom: 2rem;">
+                        <li style="margin-bottom: 1rem;"><strong style="color: white;">✓ Offline First:</strong> Audite sem internet e sincronize em um clique.</li>
+                        <li style="margin-bottom: 1rem;"><strong style="color: white;">✓ Provas Fotográficas:</strong> Não deixe margem para dúvidas. Registre tudo com fotos.</li>
+                        <li style="margin-bottom: 1rem;"><strong style="color: white;">✓ BI Integrado:</strong> Dashboards automáticos com ranking de performance.</li>
+                    </ul>
+                    <a href="index.html" class="btn btn-primary">Testar Gratuitamente</a>
+                </div>
+                <div class="dashboard-showcase reveal">
+                    <img src="assets/auditai_dashboard_preview.png" alt="Dashboard Preview">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Method -->
+    <section id="metodo">
+        <div class="container">
+            <div class="section-header reveal">
+                <h2>Como transformamos sua operação</h2>
+                <p>Implemente um ciclo de melhoria contínua em tempo recorde.</p>
+            </div>
+            <div class="cards-grid">
+                <div class="card reveal">
+                    <h3 style="color: var(--primary);">01.</h3>
+                    <h4>Mapear</h4>
+                    <p>Cadastre seus departamentos, checklists e filiais ou importe massivamente via Excel.</p>
+                </div>
+                <div class="card reveal">
+                    <h3 style="color: var(--primary);">02.</h3>
+                    <h4>Executar</h4>
+                    <p>Auditores realizam as visitas via app mobile com geolocalização e evidências.</p>
+                </div>
+                <div class="card reveal">
+                    <h3 style="color: var(--primary);">03.</h3>
+                    <h4>Corrigir</h4>
+                    <p>Gere auditorias de retorno automáticas focadas apenas no que falhou anteriormente.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
     <div class="container">
-      <div class="section-header reveal">
-        <h2>Sua operação ainda depende de papel e planilhas manuais?</h2>
-        <p>A falta de tecnologia na ponta da operação gera atrasos, falhas de comunicação e custos ocultos que prejudicam o seu crescimento.</p>
-      </div>
-      
-      <div class="cards-grid">
-        <div class="card reveal" style="transition-delay: 0.1s;">
-          <div class="card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h3>Dados Lentos</h3>
-          <p>Leva dias para consolidar relatórios. A informação chega tarde demais para evitar o prejuízo.</p>
-        </div>
-        
-        <div class="card reveal" style="transition-delay: 0.2s;">
-          <div class="card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h3>Falta de Padrão</h3>
-          <p>Uma loja funciona bem, a outra é um caos. Não há garantia de que os processos estão sendo seguidos.</p>
-        </div>
-        
-        <div class="card reveal" style="transition-delay: 0.3s;">
-          <div class="card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-            </svg>
-          </div>
-          <h3>Perdas Invisíveis</h3>
-          <p>Erros operacionais que ninguém vê drenando a margem de lucro mês após mês silenciosamente.</p>
-        </div>
-      </div>
+        <section class="cta-section reveal">
+            <h2>Pronto para valorizar seu negócio?</h2>
+            <p>Seja para gerenciar melhor sua rede ou para adquirir uma tecnologia de ponta, o AuditÁI é o seu próximo passo.</p>
+            <div style="margin-top: 3rem;">
+                <a href="index.html" class="btn btn-accent" style="padding: 1.5rem 4rem; font-size: 1.2rem;">Adquirir Licença / Testar Demo</a>
+            </div>
+        </section>
     </div>
-  </section>
 
-  <!-- Features Section -->
-  <section class="features" id="recursos">
-    <div class="container">
-      <div class="section-header reveal">
-        <h2 id="solucao">Transforme seu processo de auditoria em inteligência operacional.</h2>
-        <p>O AuditÁI une a facilidade da coleta de dados via mobile com o poder analítico da nuvem para entregar o controle absoluto da sua operação.</p>
-      </div>
-      
-      <div class="features-grid">
-        <div class="feature-item reveal" style="transition-delay: 0.1s;">
-          <div class="feature-icon">📱</div>
-          <div class="feature-content">
-            <h4>Auditoria Mobile & Offline</h4>
-            <p>Realize inspeções sem depender de internet. Sincronize os dados com a nuvem em um clique quando estiver online.</p>
-          </div>
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <a href="#" class="logo">Audit<span>ÁI</span></a>
+                <div style="display: flex; gap: 2rem;">
+                    <a href="#" style="color: var(--text-dim); text-decoration: none;">Privacidade</a>
+                    <a href="#" style="color: var(--text-dim); text-decoration: none;">Termos</a>
+                    <a href="#" style="color: var(--text-dim); text-decoration: none;">Vendas</a>
+                </div>
+            </div>
+            <div class="copyright">
+                &copy; 2026 AuditÁI. Tecnologia para Excelência Operacional.
+            </div>
         </div>
-        
-        <div class="feature-item reveal" style="transition-delay: 0.2s;">
-          <div class="feature-icon">📸</div>
-          <div class="feature-content">
-            <h4>Registro Fotográfico</h4>
-            <p>Comprove conformidades ou falhas com fotos. Exija tratativas obrigatórias para pontos críticos da operação.</p>
-          </div>
-        </div>
-        
-        <div class="feature-item reveal" style="transition-delay: 0.3s;">
-          <div class="feature-icon">🔄</div>
-          <div class="feature-content">
-            <h4>Auditorias de Retorno</h4>
-            <p>Geração automática de auditorias focadas apenas nas irregularidades encontradas anteriormente, garantindo a correção.</p>
-          </div>
-        </div>
-        
-        <div class="feature-item reveal" style="transition-delay: 0.4s;">
-          <div class="feature-icon">🤖</div>
-          <div class="feature-content">
-            <h4>Agente IA Integrado</h4>
-            <p>Importe seus Manuais de POPs (PDF) e nossa Inteligência Artificial criará checklists padronizados automaticamente.</p>
-          </div>
-        </div>
-        
-        <div class="feature-item reveal" style="transition-delay: 0.5s;">
-          <div class="feature-icon">📊</div>
-          <div class="feature-content">
-            <h4>Dashboard Completo</h4>
-            <p>Acompanhe Rankings de Lojas, Histórico de Auditorias e Análises avançadas por departamento em tempo real.</p>
-          </div>
-        </div>
-        
-        <div class="feature-item reveal" style="transition-delay: 0.6s;">
-          <div class="feature-icon">⚙️</div>
-          <div class="feature-content">
-            <h4>Total Autonomia</h4>
-            <p>Crie filiais, categorias e usuários do zero, ou importe planilhas massivamente para estruturar seu sistema em minutos.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+    </footer>
 
-  <!-- Social Proof / Dashboard -->
-  <section class="social-proof">
-    <div class="container text-center">
-      <div class="section-header reveal">
-        <h2>Tenha visão clara e tome decisões baseadas em dados.</h2>
-        <p>Relatórios gerenciais gerados automaticamente ao final de cada auditoria. Visualize gargalos, identifique padrões e recompense o bom desempenho.</p>
-      </div>
-      
-      <div class="dashboard-showcase reveal">
-        <img src="assets/dashboard_mockup.png" alt="Dashboard BI e Relatórios do AuditÁI" loading="lazy">
-      </div>
-    </div>
-  </section>
-
-  <!-- How It Works -->
-  <section class="how-it-works" id="como-funciona">
-    <div class="container">
-      <div class="section-header reveal">
-        <h2>Como o AuditÁI funciona</h2>
-        <p>Implemente a cultura de excelência operacional em quatro passos simples.</p>
-      </div>
-      
-      <div class="steps">
-        <div class="step reveal" style="transition-delay: 0.1s;">
-          <div class="step-number">1</div>
-          <h4>Cadastre</h4>
-          <p>Importe seus Processos, POPs e configure suas filiais na plataforma web.</p>
-        </div>
-        <div class="step reveal" style="transition-delay: 0.2s;">
-          <div class="step-number">2</div>
-          <h4>Audite</h4>
-          <p>Vá a campo com o app mobile e avalie as lojas (com ou sem internet).</p>
-        </div>
-        <div class="step reveal" style="transition-delay: 0.3s;">
-          <div class="step-number">3</div>
-          <h4>Analise</h4>
-          <p>Consulte relatórios e acompanhe o Ranking de Lojas no Dashboard em tempo real.</p>
-        </div>
-        <div class="step reveal" style="transition-delay: 0.4s;">
-          <div class="step-number">4</div>
-          <h4>Corrija</h4>
-          <p>Crie planos de ação e faça a auditoria de retorno para fechar os gaps.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Final CTA -->
-  <section class="cta-section">
-    <div class="container reveal">
-      <h2>Pronto para levar sua empresa "Da Prancheta para a Performance"?</h2>
-      <p>Junte-se a empresas que já blindaram seus processos e pararam de perder dinheiro com falhas operacionais.</p>
-      <a href="index.html" class="btn btn-accent" style="font-size: 1.25rem; padding: 1.2rem 2.5rem;">Quero Blindar meus Processos com o AuditÁI</a>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer>
-    <div class="container">
-      <div class="footer-content">
-        <div class="footer-logo">Audit<span>ÁI</span></div>
-        <div style="display: flex; gap: 1.5rem;">
-          <a href="#" style="color: #94a3b8; text-decoration: none;">Termos de Uso</a>
-          <a href="#" style="color: #94a3b8; text-decoration: none;">Política de Privacidade</a>
-          <a href="#" style="color: #94a3b8; text-decoration: none;">Contato</a>
-        </div>
-      </div>
-      <p>&copy; 2026 AuditÁI. Todos os direitos reservados.</p>
-    </div>
-  </footer>
-
-  <script src="landing.js"></script>
+    <script src="landing.js"></script>
 </body>
 </html>
