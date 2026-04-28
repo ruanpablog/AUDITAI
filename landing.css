@@ -165,9 +165,15 @@ header.scrolled {
 
 .hero-content {
     display: grid;
-    grid-template-columns: 1.2fr 1fr;
+    grid-template-columns: 1fr;
     gap: 4rem;
     align-items: center;
+    text-align: center;
+}
+
+.hero-text {
+    max-width: 800px;
+    margin: 0 auto;
 }
 
 .hero-text h1 {
