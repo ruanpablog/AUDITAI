@@ -1,15 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-    --primary: #3b82f6;
-    --secondary: #ef4444;
-    --accent: #f59e0b;
-    --bg-dark: #0f172a;
-    --bg-card: rgba(30, 41, 59, 0.7);
-    --text-white: #f8fafc;
-    --text-dim: #94a3b8;
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glow: rgba(59, 130, 246, 0.5);
+    --primary: #00f3ff; /* Neon Cyan */
+    --secondary: #ff0033; /* Neon Red */
+    --accent: #b026ff; /* Neon Purple */
+    --bg-dark: #050505; /* Deep Black */
+    --bg-card: rgba(20, 20, 20, 0.8);
+    --text-white: #ffffff;
+    --text-dim: #a1a1aa;
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glow: rgba(0, 243, 255, 0.4);
 }
 
 * {
@@ -57,11 +57,13 @@ header.scrolled {
 }
 
 .logo {
-    font-size: 1.8rem;
-    font-weight: 800;
+    font-size: 2.2rem;
+    font-weight: 900;
     text-decoration: none;
-    color: white;
-    letter-spacing: -1px;
+    color: var(--secondary);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: 0 0 15px rgba(255, 0, 51, 0.6), 0 0 30px rgba(255, 0, 51, 0.2);
 }
 
 .logo span {
@@ -100,26 +102,35 @@ header.scrolled {
 }
 
 .btn-primary {
-    background: var(--primary);
-    color: white;
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.3), inset 0 0 10px rgba(0, 243, 255, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-    filter: brightness(1.1);
+    background: var(--primary);
+    color: #000;
+    box-shadow: 0 0 25px rgba(0, 243, 255, 0.6), inset 0 0 15px rgba(0, 243, 255, 0.4);
 }
 
 .btn-accent {
-    background: var(--accent);
-    color: #1a1a1a;
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    background: transparent;
+    color: var(--secondary);
+    border: 1px solid var(--secondary);
+    box-shadow: 0 0 15px rgba(255, 0, 51, 0.3), inset 0 0 10px rgba(255, 0, 51, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .btn-accent:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+    background: var(--secondary);
+    color: #fff;
+    box-shadow: 0 0 25px rgba(255, 0, 51, 0.6), inset 0 0 15px rgba(255, 0, 51, 0.4);
 }
 
 .btn-outline {
@@ -313,12 +324,14 @@ section {
 /* --- CTA Section --- */
 .cta-section {
     padding: 6rem 0;
-    background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+    background: linear-gradient(135deg, rgba(20,20,20,1) 0%, rgba(5,5,5,1) 100%);
+    border: 1px solid var(--glass-border);
     text-align: center;
     border-radius: 40px;
     margin: 4rem 2rem;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 0 50px rgba(0, 243, 255, 0.1);
 }
 
 .cta-section::before {
@@ -326,10 +339,11 @@ section {
     position: absolute;
     width: 300px;
     height: 300px;
-    background: rgba(255, 255, 255, 0.1);
+    background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
     border-radius: 50%;
     top: -150px;
     left: -150px;
+    opacity: 0.5;
 }
 
 .cta-section h2 {
