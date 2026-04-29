@@ -70,6 +70,14 @@ header.scrolled {
     color: var(--secondary);
 }
 
+.brand-text {
+    color: var(--secondary);
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(255, 0, 51, 0.4);
+}
+
 .nav-links {
     display: flex;
     gap: 2.5rem;
