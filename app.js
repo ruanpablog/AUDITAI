@@ -5173,13 +5173,11 @@ function renderScheduledAudits() {
     const progressPct = document.getElementById('import-progress-pct');
     const importLog = document.getElementById('import-log');
 
-    window.closeModal = window.closeModal || function(modalId) {
-        document.getElementById(modalId)?.classList.add('hidden');
-    };
+
 
     if (btnShowBulkImport) {
         btnShowBulkImport.addEventListener('click', () => {
-            modalBulkImport.classList.remove('hidden');
+            openModal('modal-bulk-import');
             bulkImportFileInput.value = '';
             fileNameDisplay.classList.add('hidden');
             fileNameDisplay.innerText = '';
