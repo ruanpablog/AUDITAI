@@ -588,6 +588,9 @@ const _genChecksum = (str) => {
                     }
                 });
 
+                // Apply nav permissions based on role
+                applyNavPermissions();
+
                 populateStores();
                 renderAuditHistory();
 
@@ -759,6 +762,7 @@ const _genChecksum = (str) => {
             console.warn('EmailJS: credenciais não configuradas ou biblioteca não carregada.');
         }
 
+
         // Mostrar tela de confirmação de cadastro (sem auto-login)
         document.getElementById('register-email-display').innerText = email;
         showAuthScreen('register-sent-msg');
@@ -771,6 +775,7 @@ const _genChecksum = (str) => {
     document.querySelectorAll('#admin-view .tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (btn.getAttribute('data-tab') === 'admin-settings') loadSettings();
+            if (btn.getAttribute('data-tab') === 'admin-permissions') renderPermissionsMatrix();
         });
     });
 
@@ -3439,33 +3444,158 @@ const _genChecksum = (str) => {
     document.getElementById('btn-apply-dash-filters').addEventListener('click', renderDashboard);
 
     // ==========================================
-    // ADMIN MODULE
+    // ROLE & PERMISSIONS SYSTEM
+    // ==========================================
+    const ALL_NAV_FEATURES = [
+        { id: 'nova-auditoria', label: 'Nova Auditoria', icon: 'ph-clipboard-text' },
+        { id: 'dashboard',      label: 'Dashboard',      icon: 'ph-chart-pie-slice' },
+        { id: 'historico',      label: 'Histórico',      icon: 'ph-list-checks' },
+        { id: 'sincronizar',    label: 'Sincronizar',    icon: 'ph-arrows-clockwise' },
+        { id: 'agendamentos',   label: 'Agendamentos',   icon: 'ph-calendar-check' },
+        { id: 'rotinas',        label: 'Rotinas do Setor', icon: 'ph-file-text' },
+        { id: 'painel-admin',   label: 'Painel Admin',   icon: 'ph-gear-six' },
+    ];
+
+    const DEFAULT_PERMISSIONS = {
+        admin:   { 'nova-auditoria': true, 'dashboard': true, 'historico': true, 'sincronizar': true, 'agendamentos': true, 'rotinas': true, 'painel-admin': true },
+        auditor: { 'nova-auditoria': true, 'dashboard': true, 'historico': true, 'sincronizar': true, 'agendamentos': true, 'rotinas': false, 'painel-admin': false },
+        lider:   { 'nova-auditoria': false, 'dashboard': true, 'historico': true, 'sincronizar': false, 'agendamentos': true, 'rotinas': true, 'painel-admin': false },
+    };
+
+    function getPermissions() {
+        return db.permissions || DEFAULT_PERMISSIONS;
+    }
+
+    function applyNavPermissions() {
+        if (!currentUser) return;
+        const role = currentUser.role || 'auditor';
+        const perms = getPermissions();
+        const rolePerms = perms[role] || perms['auditor'] || {};
+
+        // Admin always has full access
+        if (role === 'admin') {
+            document.querySelectorAll('[data-navid]').forEach(btn => btn.classList.remove('hidden'));
+            return;
+        }
+
+        document.querySelectorAll('[data-navid]').forEach(btn => {
+            const navId = btn.getAttribute('data-navid');
+            if (navId === 'painel-admin') return; // handled separately
+            if (rolePerms[navId] === false) {
+                btn.classList.add('hidden');
+            } else {
+                btn.classList.remove('hidden');
+            }
+        });
+        // Never show admin panel for non-admins
+        document.getElementById('nav-admin')?.classList.add('hidden');
+    }
+
+    function renderPermissionsMatrix() {
+        const tbody = document.getElementById('permissions-matrix-body');
+        if (!tbody) return;
+        const perms = getPermissions();
+        tbody.innerHTML = '';
+
+        ALL_NAV_FEATURES.forEach(feat => {
+            const tr = document.createElement('tr');
+            const adminChecked  = perms.admin?.[feat.id]   !== false ? 'checked' : '';
+            const auditorChecked = perms.auditor?.[feat.id] !== false ? 'checked' : '';
+            const liderChecked  = perms.lider?.[feat.id]   !== false ? 'checked' : '';
+
+            // Admin always has full access — disable editing
+            const adminDisabled = feat.id === 'painel-admin' ? 'checked disabled' : adminChecked;
+
+            tr.innerHTML = `
+                <td style="font-weight:500; display:flex; align-items:center; gap:8px; padding: 12px 16px;">
+                    <i class="ph ${feat.icon}" style="color:var(--primary);"></i> ${feat.label}
+                </td>
+                <td style="text-align:center;">
+                    <input type="checkbox" data-role="admin" data-navid="${feat.id}" ${adminDisabled} style="width:18px;height:18px;accent-color:#ef4444;" ${feat.id === 'painel-admin' ? 'disabled' : ''}>
+                </td>
+                <td style="text-align:center;">
+                    <input type="checkbox" data-role="auditor" data-navid="${feat.id}" ${auditorChecked} style="width:18px;height:18px;accent-color:#3b82f6;">
+                </td>
+                <td style="text-align:center;">
+                    <input type="checkbox" data-role="lider" data-navid="${feat.id}" ${liderChecked} style="width:18px;height:18px;accent-color:#10b981;">
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    const btnSavePerms = document.getElementById('btn-save-permissions');
+    if (btnSavePerms) {
+        btnSavePerms.addEventListener('click', () => {
+            const perms = { admin: {}, auditor: {}, lider: {} };
+            document.querySelectorAll('#permissions-matrix-body input[type=checkbox]').forEach(cb => {
+                const role = cb.getAttribute('data-role');
+                const navId = cb.getAttribute('data-navid');
+                perms[role][navId] = cb.checked;
+            });
+            // Admin always gets painel-admin
+            perms.admin['painel-admin'] = true;
+            db.permissions = perms;
+            saveDB();
+            btnSavePerms.innerHTML = '<i class="ph ph-check"></i> Salvo!';
+            setTimeout(() => { btnSavePerms.innerHTML = '<i class="ph ph-floppy-disk"></i> Salvar Permissões'; }, 2000);
+            applyNavPermissions();
+        });
+    }
+
+    // ==========================================
+    // ADMIN MODULE - USERS
     // ==========================================
     function renderAdminUsers() {
         const tbody = document.getElementById('admin-users-body');
         if (!tbody) return;
         tbody.innerHTML = '';
-        
+
         db.users.forEach(u => {
             const tr = document.createElement('tr');
-            const roleMap = { 'admin': 'Administrador', 'manager': 'Gerente', 'auditor': 'Auditor', 'none': 'Sem Perfil' };
+            const roleMap = { 'admin': 'Administrador', 'auditor': 'Auditor', 'lider': 'Líder', 'manager': 'Líder', 'gerente': 'Líder', 'none': 'Sem Perfil' };
             const roleName = roleMap[u.role] || u.role;
-            const statusBadge = u.status === 'aprovado' ? '<span class="badge badge-success">Aprovado</span>' : '<span class="badge badge-warning">Pendente</span>';
-            
-            const companyName = (u.companyId && db.companies) ? (db.companies.find(c => c.id === u.companyId)?.name || 'N/A') : 'Nenhuma empresa vinculada';
-            
-            const btnApprove = u.status === 'pendente' ? `<button class="btn btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick='window.showApproveUserModal("${u.id}")'>Vincular</button>` : '';
+            const roleBadgeColor = u.role === 'admin' ? '#ef4444' : u.role === 'auditor' ? '#3b82f6' : '#10b981';
+            const statusBadge = u.status === 'aprovado'
+                ? '<span class="badge badge-success">Aprovado</span>'
+                : '<span class="badge badge-warning">Pendente</span>';
+
+            const companyName = (u.companyId && db.companies)
+                ? (db.companies.find(c => c.id === u.companyId)?.name || 'N/A')
+                : 'Nenhuma empresa vinculada';
+
+            const isCurrentUser = currentUser && u.id === currentUser.id;
+            const btnVincular = u.status === 'pendente'
+                ? `<button class="btn btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick='window.showApproveUserModal("${u.id}")'>Vincular</button>`
+                : '';
+            const btnChangeRole = `<button class="btn btn-ghost" title="Editar perfil" onclick='window.showApproveUserModal("${u.id}")' style="color:var(--accent);"><i class="ph ph-pencil-simple"></i></button>`;
+            const btnDelete = !isCurrentUser
+                ? `<button class="btn btn-ghost" title="Excluir usuário" onclick='window.deleteUser("${u.id}")' style="color:var(--danger);"><i class="ph ph-trash"></i></button>`
+                : '';
 
             tr.innerHTML = `
                 <td>${u.name}</td>
-                <td>${u.email}</td>
-                <td>${roleName} <br><small style="color:var(--text-muted);">${companyName}</small></td>
+                <td style="color:var(--text-muted); font-size:0.9rem;">${u.email}</td>
+                <td>
+                    <span style="color:${roleBadgeColor}; font-weight:600;">${roleName}</span>
+                    <br><small style="color:var(--text-muted);">${companyName}</small>
+                </td>
                 <td>${statusBadge}</td>
-                <td>${btnApprove}</td>
+                <td style="display:flex; gap:4px; align-items:center;">${btnVincular}${btnChangeRole}${btnDelete}</td>
             `;
             tbody.appendChild(tr);
         });
     }
+
+    window.deleteUser = function(userId) {
+        const u = db.users.find(x => x.id === userId);
+        if (!u) return;
+        if (!confirm(`Tem certeza que deseja EXCLUIR o usuário "${u.name}"?\nEsta ação não pode ser desfeita.`)) return;
+        db.users = db.users.filter(x => x.id !== userId);
+        saveDB();
+        renderAdminUsers();
+    };
+
 
     const modalApprove = document.getElementById('modal-approve-user');
     const selectCompany = document.getElementById('approve-company');

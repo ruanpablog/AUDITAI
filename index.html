@@ -182,25 +182,25 @@
             </div>
 
             <nav class="sidebar-nav">
-                <button class="nav-btn active" data-target="audit-flow">
+                <button class="nav-btn active" data-target="audit-flow" data-navid="nova-auditoria">
                     <i class="ph ph-clipboard-text"></i> Nova Auditoria
                 </button>
-                <button class="nav-btn" data-target="dashboard-view" id="nav-dashboard">
+                <button class="nav-btn" data-target="dashboard-view" id="nav-dashboard" data-navid="dashboard">
                     <i class="ph ph-chart-pie-slice"></i> Dashboard
                 </button>
-                <button class="nav-btn" data-target="audits-list-view">
+                <button class="nav-btn" data-target="audits-list-view" data-navid="historico">
                     <i class="ph ph-list-checks"></i> Histórico
                 </button>
-                <button class="nav-btn" id="btn-manual-sync">
+                <button class="nav-btn" id="btn-manual-sync" data-navid="sincronizar">
                     <i class="ph ph-arrows-clockwise"></i> Sincronizar
                 </button>
-                <button class="nav-btn" data-target="scheduled-audits-view">
+                <button class="nav-btn" data-target="scheduled-audits-view" data-navid="agendamentos">
                     <i class="ph ph-calendar-check"></i> Agendamentos
                 </button>
-                <button class="nav-btn" data-target="pops-view" id="nav-pops">
+                <button class="nav-btn" data-target="pops-view" id="nav-pops" data-navid="rotinas">
                     <i class="ph ph-file-text"></i> Rotinas do Setor
                 </button>
-                <button class="nav-btn admin-only hidden" data-target="admin-view" id="nav-admin">
+                <button class="nav-btn admin-only hidden" data-target="admin-view" id="nav-admin" data-navid="painel-admin">
                     <i class="ph ph-gear-six"></i> Painel Admin
                 </button>
             </nav>
@@ -652,6 +652,7 @@
                     <button class="tab-btn" data-tab="admin-categories">Categorias</button>
                     <button class="tab-btn" data-tab="admin-checklist">Checklists</button>
                     <button class="tab-btn" data-tab="admin-users">Usuários</button>
+                    <button class="tab-btn" data-tab="admin-permissions" style="background: linear-gradient(135deg, #7c3aed, #6d28d9); color: #fff; border: none; font-weight: 700;"><i class="ph ph-shield-check"></i> Permissões</button>
                     <button class="tab-btn" data-tab="admin-pops">Gestão de POPs</button>
                     <button class="tab-btn" data-tab="admin-settings"><i class="ph ph-gear-six"></i> Configurações</button>
                 </div>
@@ -1030,7 +1031,7 @@
                         </div>
                         <div id="admin-users" class="tab-content">
                             <div class="glass" style="padding: 20px;">
-                                <h3 style="font-size: 1.1rem; margin-bottom: 16px;">Aprovação de Usuários</h3>
+                                <h3 style="font-size: 1.1rem; margin-bottom: 16px;">Gerenciamento de Usuários</h3>
                                 <table class="data-table">
                                     <thead>
                                         <tr>
@@ -1043,6 +1044,40 @@
                                     </thead>
                                     <tbody id="admin-users-body"></tbody>
                                 </table>
+                            </div>
+                        </div>
+
+                        <!-- Admin Tab: Permissões por Perfil -->
+                        <div id="admin-permissions" class="tab-content">
+                            <div class="glass" style="padding: 24px;">
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                    <i class="ph ph-shield-check" style="font-size: 1.8rem; color: #7c3aed;"></i>
+                                    <div>
+                                        <h3 style="font-size: 1.2rem;">Controle de Acesso por Perfil</h3>
+                                        <p style="color: var(--text-muted); font-size: 0.85rem;">Defina quais seções do sistema cada perfil pode acessar.</p>
+                                    </div>
+                                </div>
+
+                                <div style="overflow-x: auto; margin-top: 24px;">
+                                    <table class="data-table" style="min-width: 600px;">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-align:left; padding: 12px 16px;">Função do Sistema</th>
+                                                <th style="text-align:center; color: #ef4444;"><i class="ph ph-shield-star"></i> Administrador</th>
+                                                <th style="text-align:center; color: #3b82f6;"><i class="ph ph-magnifying-glass"></i> Auditor</th>
+                                                <th style="text-align:center; color: #10b981;"><i class="ph ph-users-three"></i> Líder</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="permissions-matrix-body">
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
+                                    <button class="btn btn-primary" id="btn-save-permissions" style="background: linear-gradient(135deg, #7c3aed, #6d28d9); border: none; box-shadow: 0 4px 14px rgba(124,58,237,0.4);">
+                                        <i class="ph ph-floppy-disk"></i> Salvar Permissões
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         
@@ -1084,9 +1119,9 @@
                                 <div class="form-group">
                                     <label>Perfil de Acesso</label>
                                     <select id="approve-role" required>
-                                        <option value="auditor">Auditor</option>
-                                        <option value="manager">Gerente de Loja</option>
-                                        <option value="admin">Administrador</option>
+                                        <option value="admin">🔴 Administrador</option>
+                                        <option value="auditor">🔵 Auditor</option>
+                                        <option value="lider">🟢 Líder</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
