@@ -3463,21 +3463,33 @@ const _genChecksum = (str) => {
     };
 
     function getPermissions() {
-        return db.permissions || DEFAULT_PERMISSIONS;
+        return db.permissions || null; // null = nenhuma permissão salva pelo admin
     }
 
     function applyNavPermissions() {
         if (!currentUser) return;
         const role = currentUser.role || 'auditor';
-        const perms = getPermissions();
-        const rolePerms = perms[role] || perms['auditor'] || {};
 
-        // Admin always has full access
+        // Admin always has full access regardless of saved permissions
         if (role === 'admin') {
             document.querySelectorAll('[data-navid]').forEach(btn => btn.classList.remove('hidden'));
             return;
         }
 
+        // If no permissions were explicitly saved by admin, show everything
+        const perms = getPermissions();
+        if (!perms) {
+            document.querySelectorAll('[data-navid]').forEach(btn => {
+                if (btn.getAttribute('data-navid') !== 'painel-admin') {
+                    btn.classList.remove('hidden');
+                }
+            });
+            document.getElementById('nav-admin')?.classList.add('hidden');
+            return;
+        }
+
+        // Apply saved permissions
+        const rolePerms = perms[role] || {};
         document.querySelectorAll('[data-navid]').forEach(btn => {
             const navId = btn.getAttribute('data-navid');
             if (navId === 'painel-admin') return; // handled separately
