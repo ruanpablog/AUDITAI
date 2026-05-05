@@ -57,7 +57,7 @@ const _genChecksum = (str) => {
         return 'auditai_main';
     };
 
-    const saveDB = (syncCloud = false, forceMain = false) => {
+    const saveDB = (syncCloud = true, forceMain = false) => {
         if (db.audits) db.audits = db.audits.filter(a => a && a.id && a.date);
         const jsonStr = JSON.stringify(db);
         const checksum = _genChecksum(jsonStr);
