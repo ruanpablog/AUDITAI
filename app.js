@@ -3476,29 +3476,21 @@ const _genChecksum = (str) => {
             return;
         }
 
-        // If no permissions were explicitly saved by admin, show everything
         const perms = getPermissions();
-        if (!perms) {
-            document.querySelectorAll('[data-navid]').forEach(btn => {
-                if (btn.getAttribute('data-navid') !== 'painel-admin') {
-                    btn.classList.remove('hidden');
-                }
-            });
-            document.getElementById('nav-admin')?.classList.add('hidden');
-            return;
-        }
+        const rolePerms = perms ? (perms[role] || {}) : {};
 
-        // Apply saved permissions
-        const rolePerms = perms[role] || {};
+        // Default DENY: require explicit 'true' to show the tab
         document.querySelectorAll('[data-navid]').forEach(btn => {
             const navId = btn.getAttribute('data-navid');
             if (navId === 'painel-admin') return; // handled separately
-            if (rolePerms[navId] === false) {
-                btn.classList.add('hidden');
-            } else {
+            
+            if (rolePerms[navId] === true) {
                 btn.classList.remove('hidden');
+            } else {
+                btn.classList.add('hidden');
             }
         });
+        
         // Never show admin panel for non-admins
         document.getElementById('nav-admin')?.classList.add('hidden');
     }
@@ -3506,17 +3498,17 @@ const _genChecksum = (str) => {
     function renderPermissionsMatrix() {
         const tbody = document.getElementById('permissions-matrix-body');
         if (!tbody) return;
-        const perms = getPermissions();
+        const perms = getPermissions() || { admin: {}, auditor: {}, lider: {} };
         tbody.innerHTML = '';
 
         ALL_NAV_FEATURES.forEach(feat => {
             const tr = document.createElement('tr');
-            const adminChecked  = perms.admin?.[feat.id]   !== false ? 'checked' : '';
-            const auditorChecked = perms.auditor?.[feat.id] !== false ? 'checked' : '';
-            const liderChecked  = perms.lider?.[feat.id]   !== false ? 'checked' : '';
-
-            // Admin always has full access — disable editing
-            const adminDisabled = feat.id === 'painel-admin' ? 'checked disabled' : adminChecked;
+            
+            // Admin is always checked
+            const adminDisabled = 'checked disabled';
+            // Default DENY for others unless explicitly saved as true
+            const auditorChecked = perms.auditor?.[feat.id] === true ? 'checked' : '';
+            const liderChecked  = perms.lider?.[feat.id] === true ? 'checked' : '';
 
             tr.innerHTML = `
                 <td style="font-weight:500; display:flex; align-items:center; gap:8px; padding: 12px 16px;">
