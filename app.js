@@ -775,7 +775,6 @@ const _genChecksum = (str) => {
     document.querySelectorAll('#admin-view .tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (btn.getAttribute('data-tab') === 'admin-settings') loadSettings();
-            if (btn.getAttribute('data-tab') === 'admin-permissions') renderPermissionsMatrix();
         });
     });
 
@@ -3456,15 +3455,18 @@ const _genChecksum = (str) => {
         { id: 'painel-admin',   label: 'Painel Admin',   icon: 'ph-gear-six' },
     ];
 
-    const DEFAULT_PERMISSIONS = {
-        admin:   { 'nova-auditoria': true, 'dashboard': true, 'historico': true, 'sincronizar': true, 'agendamentos': true, 'rotinas': true, 'painel-admin': true },
-        auditor: { 'nova-auditoria': true, 'dashboard': true, 'historico': true, 'sincronizar': true, 'agendamentos': true, 'rotinas': false, 'painel-admin': false },
-        lider:   { 'nova-auditoria': false, 'dashboard': true, 'historico': true, 'sincronizar': false, 'agendamentos': true, 'rotinas': true, 'painel-admin': false },
-    };
-
-    function getPermissions() {
-        return db.permissions || null; // null = nenhuma permissão salva pelo admin
-    }
+    // ==========================================
+    // ROLE & PERMISSIONS SYSTEM
+    // ==========================================
+    const ALL_NAV_FEATURES = [
+        { id: 'nova-auditoria', label: 'Nova Auditoria', icon: 'ph-clipboard-text' },
+        { id: 'dashboard',      label: 'Dashboard',      icon: 'ph-chart-pie-slice' },
+        { id: 'historico',      label: 'Histórico',      icon: 'ph-list-checks' },
+        { id: 'sincronizar',    label: 'Sincronizar',    icon: 'ph-arrows-clockwise' },
+        { id: 'agendamentos',   label: 'Agendamentos',   icon: 'ph-calendar-check' },
+        { id: 'rotinas',        label: 'Rotinas do Setor', icon: 'ph-file-text' },
+        { id: 'painel-admin',   label: 'Painel Admin',   icon: 'ph-gear-six' },
+    ];
 
     function applyNavPermissions() {
         if (!currentUser) return;
@@ -3476,10 +3478,9 @@ const _genChecksum = (str) => {
             return;
         }
 
-        const perms = getPermissions();
-        const rolePerms = currentUser.customPermissions || (perms ? (perms[role] || {}) : {});
+        // Restrito por padrão: exige que customPermissions tenha sido salvo explicitamente
+        const rolePerms = currentUser.customPermissions || {};
 
-        // Default DENY: require explicit 'true' to show the tab
         document.querySelectorAll('[data-navid]').forEach(btn => {
             const navId = btn.getAttribute('data-navid');
             if (navId === 'painel-admin') return; // handled separately
@@ -3493,58 +3494,6 @@ const _genChecksum = (str) => {
         
         // Never show admin panel for non-admins
         document.getElementById('nav-admin')?.classList.add('hidden');
-    }
-
-    function renderPermissionsMatrix() {
-        const tbody = document.getElementById('permissions-matrix-body');
-        if (!tbody) return;
-        const perms = getPermissions() || { admin: {}, auditor: {}, lider: {} };
-        tbody.innerHTML = '';
-
-        ALL_NAV_FEATURES.forEach(feat => {
-            const tr = document.createElement('tr');
-            
-            // Admin is always checked
-            const adminDisabled = 'checked disabled';
-            // Default DENY for others unless explicitly saved as true
-            const auditorChecked = perms.auditor?.[feat.id] === true ? 'checked' : '';
-            const liderChecked  = perms.lider?.[feat.id] === true ? 'checked' : '';
-
-            tr.innerHTML = `
-                <td style="font-weight:500; display:flex; align-items:center; gap:8px; padding: 12px 16px;">
-                    <i class="ph ${feat.icon}" style="color:var(--primary);"></i> ${feat.label}
-                </td>
-                <td style="text-align:center;">
-                    <input type="checkbox" data-role="admin" data-navid="${feat.id}" ${adminDisabled} style="width:18px;height:18px;accent-color:#ef4444;" ${feat.id === 'painel-admin' ? 'disabled' : ''}>
-                </td>
-                <td style="text-align:center;">
-                    <input type="checkbox" data-role="auditor" data-navid="${feat.id}" ${auditorChecked} style="width:18px;height:18px;accent-color:#3b82f6;">
-                </td>
-                <td style="text-align:center;">
-                    <input type="checkbox" data-role="lider" data-navid="${feat.id}" ${liderChecked} style="width:18px;height:18px;accent-color:#10b981;">
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    const btnSavePerms = document.getElementById('btn-save-permissions');
-    if (btnSavePerms) {
-        btnSavePerms.addEventListener('click', () => {
-            const perms = { admin: {}, auditor: {}, lider: {} };
-            document.querySelectorAll('#permissions-matrix-body input[type=checkbox]').forEach(cb => {
-                const role = cb.getAttribute('data-role');
-                const navId = cb.getAttribute('data-navid');
-                perms[role][navId] = cb.checked;
-            });
-            // Admin always gets painel-admin
-            perms.admin['painel-admin'] = true;
-            db.permissions = perms;
-            saveDB();
-            btnSavePerms.innerHTML = '<i class="ph ph-check"></i> Salvo!';
-            setTimeout(() => { btnSavePerms.innerHTML = '<i class="ph ph-floppy-disk"></i> Salvar Permissões'; }, 2000);
-            applyNavPermissions();
-        });
     }
 
     // ==========================================
@@ -3603,18 +3552,7 @@ const _genChecksum = (str) => {
 
     const modalApprove = document.getElementById('modal-approve-user');
     const selectCompany = document.getElementById('approve-company');
-    const toggleCustomPerms = document.getElementById('use-custom-perms');
     const customPermsContainer = document.getElementById('user-custom-perms-container');
-
-    if (toggleCustomPerms) {
-        toggleCustomPerms.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                customPermsContainer.classList.remove('hidden');
-            } else {
-                customPermsContainer.classList.add('hidden');
-            }
-        });
-    }
 
     window.showApproveUserModal = function(userId) {
         const u = db.users.find(x => x.id === userId);
@@ -3654,23 +3592,20 @@ const _genChecksum = (str) => {
         }
 
         // Setup Custom Permissions UI
-        if (toggleCustomPerms && customPermsContainer) {
+        if (customPermsContainer) {
             customPermsContainer.innerHTML = '';
             const userPerms = u.customPermissions || {};
-            const hasCustom = !!u.customPermissions;
-            toggleCustomPerms.checked = hasCustom;
-            if (hasCustom) customPermsContainer.classList.remove('hidden');
-            else customPermsContainer.classList.add('hidden');
 
             ALL_NAV_FEATURES.forEach(feat => {
-                const isChecked = userPerms[feat.id] === true;
+                const isChecked = u.role === 'admin' ? true : (userPerms[feat.id] === true);
+                const disabled = u.role === 'admin' ? 'disabled' : '';
                 const div = document.createElement('label');
                 div.style.display = 'flex';
                 div.style.alignItems = 'center';
                 div.style.gap = '8px';
                 div.style.cursor = 'pointer';
                 div.innerHTML = `
-                    <input type="checkbox" data-user-navid="${feat.id}" ${isChecked ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--primary);">
+                    <input type="checkbox" data-user-navid="${feat.id}" ${isChecked ? 'checked' : ''} ${disabled} style="width:16px;height:16px;accent-color:var(--primary);">
                     <span><i class="ph ${feat.icon}"></i> ${feat.label}</span>
                 `;
                 customPermsContainer.appendChild(div);
@@ -3703,15 +3638,13 @@ const _genChecksum = (str) => {
                 u.departmentId = deptId || null;
 
                 // Handle custom permissions
-                if (toggleCustomPerms && toggleCustomPerms.checked) {
+                if (customPermsContainer) {
                     const customPerms = {};
                     document.querySelectorAll('#user-custom-perms-container input[type="checkbox"]').forEach(cb => {
                         const navId = cb.getAttribute('data-user-navid');
                         customPerms[navId] = cb.checked;
                     });
                     u.customPermissions = customPerms;
-                } else {
-                    delete u.customPermissions;
                 }
 
                 saveDB();
