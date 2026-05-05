@@ -3477,7 +3477,7 @@ const _genChecksum = (str) => {
         }
 
         const perms = getPermissions();
-        const rolePerms = perms ? (perms[role] || {}) : {};
+        const rolePerms = currentUser.customPermissions || (perms ? (perms[role] || {}) : {});
 
         // Default DENY: require explicit 'true' to show the tab
         document.querySelectorAll('[data-navid]').forEach(btn => {
@@ -3603,9 +3603,31 @@ const _genChecksum = (str) => {
 
     const modalApprove = document.getElementById('modal-approve-user');
     const selectCompany = document.getElementById('approve-company');
+    const toggleCustomPerms = document.getElementById('use-custom-perms');
+    const customPermsContainer = document.getElementById('user-custom-perms-container');
+
+    if (toggleCustomPerms) {
+        toggleCustomPerms.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                customPermsContainer.classList.remove('hidden');
+            } else {
+                customPermsContainer.classList.add('hidden');
+            }
+        });
+    }
 
     window.showApproveUserModal = function(userId) {
+        const u = db.users.find(x => x.id === userId);
+        if (!u) return;
+
         document.getElementById('approve-user-id').value = userId;
+        document.getElementById('modal-approve-title').innerText = u.status === 'pendente' ? 'Aprovar Usuário' : 'Editar Usuário';
+        
+        // Fill role
+        const roleSelect = document.getElementById('approve-role');
+        if (roleSelect) roleSelect.value = u.role || 'auditor';
+
+        // Fill company
         selectCompany.innerHTML = '<option value="">Sem empresa</option>';
         if (db.companies) {
             db.companies.forEach(c => {
@@ -3615,8 +3637,9 @@ const _genChecksum = (str) => {
                 selectCompany.appendChild(opt);
             });
         }
+        selectCompany.value = u.companyId || '';
 
-        // Popular departamentos para vinculo POP
+        // Fill department
         const approveDept = document.getElementById('approve-dept');
         if (approveDept) {
             approveDept.innerHTML = '<option value="">Sem departamento fixo</option>';
@@ -3625,6 +3648,32 @@ const _genChecksum = (str) => {
                 opt.value = d.id;
                 opt.textContent = d.name;
                 approveDept.appendChild(opt);
+            });
+            // Assumes u.departmentId exists or not
+            approveDept.value = u.departmentId || '';
+        }
+
+        // Setup Custom Permissions UI
+        if (toggleCustomPerms && customPermsContainer) {
+            customPermsContainer.innerHTML = '';
+            const userPerms = u.customPermissions || {};
+            const hasCustom = !!u.customPermissions;
+            toggleCustomPerms.checked = hasCustom;
+            if (hasCustom) customPermsContainer.classList.remove('hidden');
+            else customPermsContainer.classList.add('hidden');
+
+            ALL_NAV_FEATURES.forEach(feat => {
+                const isChecked = userPerms[feat.id] === true;
+                const div = document.createElement('label');
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.style.gap = '8px';
+                div.style.cursor = 'pointer';
+                div.innerHTML = `
+                    <input type="checkbox" data-user-navid="${feat.id}" ${isChecked ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--primary);">
+                    <span><i class="ph ${feat.icon}"></i> ${feat.label}</span>
+                `;
+                customPermsContainer.appendChild(div);
             });
         }
 
@@ -3651,8 +3700,26 @@ const _genChecksum = (str) => {
                 u.status = 'aprovado';
                 u.role = role;
                 u.companyId = compId || null;
+                u.departmentId = deptId || null;
+
+                // Handle custom permissions
+                if (toggleCustomPerms && toggleCustomPerms.checked) {
+                    const customPerms = {};
+                    document.querySelectorAll('#user-custom-perms-container input[type="checkbox"]').forEach(cb => {
+                        const navId = cb.getAttribute('data-user-navid');
+                        customPerms[navId] = cb.checked;
+                    });
+                    u.customPermissions = customPerms;
+                } else {
+                    delete u.customPermissions;
+                }
+
                 saveDB();
                 renderAdminUsers();
+                if (currentUser && currentUser.id === u.id) {
+                    currentUser = u;
+                    applyNavPermissions();
+                }
                 modalApprove.classList.add('hidden');
             }
         });

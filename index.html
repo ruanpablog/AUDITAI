@@ -1113,8 +1113,8 @@
                         
                         <!-- Modal Aprovação de Usuários -->
                         <div id="modal-approve-user" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center;">
-                            <div class="glass" style="padding:24px; width: 400px; max-width:90%;">
-                                <h3 style="margin-bottom:16px;">Aprovar Usuário</h3>
+                            <div class="glass" style="padding:24px; width: 450px; max-width:90%;">
+                                <h3 id="modal-approve-title" style="margin-bottom:16px;">Editar / Aprovar Usuário</h3>
                                 <input type="hidden" id="approve-user-id">
                                 <div class="form-group">
                                     <label>Perfil de Acesso</label>
@@ -1130,15 +1130,25 @@
                                         <option value="">Sem empresa</option>
                                     </select>
                                 </div>
-                                <div class="form-group" style="margin-bottom: 24px;">
+                                <div class="form-group" style="margin-bottom: 16px;">
                                     <label>Departamento (Setores POP)</label>
                                     <select id="approve-dept">
                                         <option value="">Sem departamento fixo</option>
                                     </select>
                                 </div>
+                                <div class="form-group" style="margin-bottom: 24px;">
+                                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                        <input type="checkbox" id="use-custom-perms" style="width:16px; height:16px; accent-color:var(--primary);">
+                                        <span style="font-weight:600;">Permissões Específicas</span>
+                                    </label>
+                                    <small style="color:var(--text-muted); display:block; margin-top:4px; margin-bottom:8px;">Se ativado, ignora o perfil e usa as opções abaixo.</small>
+                                    <div id="user-custom-perms-container" class="hidden" style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border); max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                                        <!-- Checkboxes populados via JS -->
+                                    </div>
+                                </div>
                                 <div style="display:flex; justify-content:flex-end; gap:12px;">
                                     <button class="btn btn-outline" id="btn-cancel-approve">Cancelar</button>
-                                    <button class="btn btn-primary" id="btn-confirm-approve">Aprovar</button>
+                                    <button class="btn btn-primary" id="btn-confirm-approve">Salvar</button>
                                 </div>
                             </div>
                         </div>
