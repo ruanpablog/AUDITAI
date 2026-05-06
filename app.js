@@ -3455,19 +3455,6 @@ const _genChecksum = (str) => {
         { id: 'painel-admin',   label: 'Painel Admin',   icon: 'ph-gear-six' },
     ];
 
-    // ==========================================
-    // ROLE & PERMISSIONS SYSTEM
-    // ==========================================
-    const ALL_NAV_FEATURES = [
-        { id: 'nova-auditoria', label: 'Nova Auditoria', icon: 'ph-clipboard-text' },
-        { id: 'dashboard',      label: 'Dashboard',      icon: 'ph-chart-pie-slice' },
-        { id: 'historico',      label: 'Histórico',      icon: 'ph-list-checks' },
-        { id: 'sincronizar',    label: 'Sincronizar',    icon: 'ph-arrows-clockwise' },
-        { id: 'agendamentos',   label: 'Agendamentos',   icon: 'ph-calendar-check' },
-        { id: 'rotinas',        label: 'Rotinas do Setor', icon: 'ph-file-text' },
-        { id: 'painel-admin',   label: 'Painel Admin',   icon: 'ph-gear-six' },
-    ];
-
     function applyNavPermissions() {
         if (!currentUser) return;
         const role = currentUser.role || 'auditor';
@@ -3478,20 +3465,25 @@ const _genChecksum = (str) => {
             return;
         }
 
-        // Restrito por padrão: exige que customPermissions tenha sido salvo explicitamente
-        const rolePerms = currentUser.customPermissions || {};
+        // Se customPermissions foi salvo explicitamente, aplica as restrições.
+        // Se NÃO foi configurado ainda, libera tudo por padrão (evita bloquear usuários novos).
+        const rolePerms = currentUser.customPermissions;
+        const hasCustomPerms = rolePerms && Object.keys(rolePerms).length > 0;
 
         document.querySelectorAll('[data-navid]').forEach(btn => {
             const navId = btn.getAttribute('data-navid');
             if (navId === 'painel-admin') return; // handled separately
-            
-            if (rolePerms[navId] === true) {
+
+            if (!hasCustomPerms) {
+                // Sem permissões configuradas: libera tudo por padrão
+                btn.classList.remove('hidden');
+            } else if (rolePerms[navId] === true) {
                 btn.classList.remove('hidden');
             } else {
                 btn.classList.add('hidden');
             }
         });
-        
+
         // Never show admin panel for non-admins
         document.getElementById('nav-admin')?.classList.add('hidden');
     }
