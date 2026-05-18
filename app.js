@@ -449,6 +449,26 @@ const _genChecksum = (str) => {
             };
         }
 
+        // --- BACKUP RECOVERY FLOW ---
+        // Se a base carregada estiver sem a empresa "ECONÔMICO", tenta carregar do arquivo de backup de segurança
+        if (!db.companies || db.companies.length === 0 || !db.companies.find(c => c.id === 'comp_1772834768448')) {
+            try {
+                console.log("Detectada base vazia ou sem a empresa ECONÔMICO. Tentando restaurar do backup...");
+                const response = await fetch('./auditai_backup_usuario.json');
+                if (response.ok) {
+                    const backupData = await response.json();
+                    if (backupData && backupData.companies && backupData.companies.length > 0) {
+                        db = backupData;
+                        console.log("Banco de dados restaurado com sucesso do backup local!");
+                        // Forçar salvamento no localStorage e na nuvem
+                        saveDB(true);
+                    }
+                }
+            } catch (backupErr) {
+                console.error("Erro ao ler ou restaurar backup:", backupErr);
+            }
+        }
+
         // --- SMART AUDIT MERGE ---
         // Recuperar auditorias locais que não estão na nuvem
         if (localData && localData.audits && Array.isArray(localData.audits)) {
