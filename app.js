@@ -723,29 +723,60 @@ const _genChecksum = (str) => {
     });
 
 
-    // Login via Supabase Auth
+    // Login via Supabase Auth com fallback local para uso offline
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('login-email').value.trim().toLowerCase();
         const pass = document.getElementById('login-pass').value.trim();
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: pass,
-        });
+        let authData = null;
+        let authError = null;
 
-        if (error) {
-            errorMsg.innerText = "Credenciais incorretas ou erro: " + error.message;
-            return;
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: pass,
+            });
+            if (error) {
+                authError = error.message;
+            } else {
+                authData = data;
+            }
+        } catch (netErr) {
+            console.warn("Erro de rede no Supabase, tentando login local:", netErr);
+            authError = "Failed to fetch";
         }
 
-        // Buscar dados complementares (role, status) no nosso DB interno
+        // Se falhou no Supabase devido a erro de rede ("Failed to fetch"), tenta autenticar localmente
+        if (authError === "Failed to fetch" || !authData) {
+            const localUser = db.users.find(u => (u.email || "").toLowerCase() === email);
+            if (localUser && localUser.pass === pass) {
+                if (localUser.status === 'pendente') {
+                    currentUser = null;
+                    errorMsg.innerText = "Sua conta está aguardando aprovação do administrador.";
+                    pendingMsg.classList.remove('hidden');
+                    return;
+                }
+                currentUser = localUser;
+                sessionStorage.setItem('auditai_session', email);
+                loadDB().then(() => updateAuthUI());
+                errorMsg.innerText = '';
+                return;
+            } else {
+                // Se falhou no local e não foi erro de rede genérico, mostra o erro do Supabase
+                // Se foi erro de rede e as credenciais locais estão erradas ou inexistentes
+                errorMsg.innerText = "Credenciais incorretas ou erro: " + (authError === "Failed to fetch" ? "Login offline falhou. Verifique e-mail e senha." : authError);
+                return;
+            }
+        }
+
+        // Se autenticou com sucesso pelo Supabase, segue o fluxo normal
         let user = db.users.find(u => (u.email || "").toLowerCase() === email);
         
         // Se for o Ruan, garantir que ele seja admin mesmo que não esteja no DB
         if (email === 'ruangomes221102@gmail.com') {
             if (!user) {
-                user = { id: data.user.id, name: 'Ruan Gomes', email: email, role: 'admin', status: 'aprovado' };
+                user = { id: authData.user.id, name: 'Ruan Gomes', email: email, role: 'admin', status: 'aprovado', pass: pass };
                 db.users.push(user);
                 saveDB();
             }
@@ -760,6 +791,11 @@ const _genChecksum = (str) => {
                 pendingMsg.classList.remove('hidden');
                 return;
             }
+            // Atualizar a senha local se mudou no Supabase
+            if (user.pass !== pass) {
+                user.pass = pass;
+                saveDB();
+            }
             currentUser = user;
             sessionStorage.setItem('auditai_session', email);
             loadDB().then(() => updateAuthUI());
@@ -767,9 +803,10 @@ const _genChecksum = (str) => {
             // Se o usuário existe no Supabase mas não no nosso DB interno (raro, mas possível)
             // Vamos criá-lo no nosso DB interno como pendente para que o Admin possa ver e aprovar
             const newUser = {
-                id: data.user.id,
+                id: authData.user.id,
                 name: email.split('@')[0],
                 email: email,
+                pass: pass,
                 role: 'auditor',
                 companyId: null,
                 status: 'pendente'
@@ -785,30 +822,47 @@ const _genChecksum = (str) => {
         }
     });
 
-    // Cadastro via Supabase Auth
+    // Cadastro via Supabase Auth com fallback offline
     regForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('reg-name').value;
         const email = document.getElementById('reg-email').value;
         const pass = document.getElementById('reg-pass').value;
 
-        const { data, error } = await supabase.auth.signUp({
-            email: email,
-            password: pass,
-            options: {
-                data: { full_name: name }
-            }
-        });
+        let regData = null;
+        let regError = null;
 
-        if (error) {
-            errorMsg.innerText = "Erro ao cadastrar: " + error.message;
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: pass,
+                options: {
+                    data: { full_name: name }
+                }
+            });
+            if (error) regError = error.message;
+            else regData = data;
+        } catch (netErr) {
+            console.warn("Erro de rede ao cadastrar no Supabase, usando cadastro local:", netErr);
+            regError = "Failed to fetch";
+        }
+
+        // Se falhou por rede, ou cadastrou
+        if (regError && regError !== "Failed to fetch") {
+            errorMsg.innerText = "Erro ao cadastrar: " + regError;
             return;
         }
 
+        const userId = regData ? regData.user.id : 'offline_' + Date.now();
+
         // Salvar no nosso DB interno com status PENDENTE para aprovação do Admin
         const newUser = {
-            id: data.user.id,
-            name, email, role: 'auditor', companyId: null,
+            id: userId,
+            name,
+            email,
+            pass, // Salva a senha localmente para permitir login offline fallback!
+            role: 'auditor',
+            companyId: null,
             status: 'pendente' 
         };
 
@@ -818,7 +872,6 @@ const _genChecksum = (str) => {
                 await saveDB();
             } catch (saveErr) {
                 console.error("Erro ao salvar novo usuário no DB:", saveErr);
-                // Mesmo se falhar o saveDB (ex: RLS), o usuário já foi criado no Supabase Auth
             }
         }
 
