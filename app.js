@@ -384,14 +384,28 @@ const _genChecksum = (str) => {
         try {
             const cloudId = getCloudId();
             console.log(`Tentando sincronizar com Supabase (${cloudId})...`);
-            const { data, error } = await supabase.from('app_state').select('db_data').eq('id', cloudId).single();
             
-            if (!error && data && data.db_data) {
-                cloudData = data.db_data;
-                console.log("Dados recuperados da Nuvem.");
-            } else if (cloudId !== 'auditai_main') {
+            // 1. Busca dados do container específico do usuário logado
+            const { data: specData, error: specError } = await supabase.from('app_state').select('db_data').eq('id', cloudId).single();
+            if (!specError && specData) cloudData = specData.db_data;
+
+            // 2. SEMPRE busca usuários do container MAIN para garantir que novos cadastros apareçam para o Admin
+            // Isso resolve o problema de novos usuários "sumirem" se o Admin estiver em um container privado
+            if (cloudId !== 'auditai_main') {
                 const { data: mainData } = await supabase.from('app_state').select('db_data').eq('id', 'auditai_main').single();
-                if (mainData) cloudData = mainData.db_data;
+                if (mainData && mainData.db_data && mainData.db_data.users) {
+                    if (!cloudData) {
+                        cloudData = mainData.db_data;
+                    } else {
+                        // Mesclar usuários do MAIN que não estão no cloudData atual
+                        if (!cloudData.users) cloudData.users = [];
+                        mainData.db_data.users.forEach(mu => {
+                            if (!cloudData.users.find(u => (u.email||"").toLowerCase() === (mu.email||"").toLowerCase())) {
+                                cloudData.users.push(mu);
+                            }
+                        });
+                    }
+                }
             }
         } catch(err) {
             console.warn("Falha no Supabase. Fallback para LocalStorage:", err.message);
@@ -553,9 +567,19 @@ const _genChecksum = (str) => {
 
         if (currentUser) {
             if (currentUser.status === 'pendente') {
+                // Deslogar do Supabase e limpar sessão local para evitar travamento
+                supabase.auth.signOut();
+                sessionStorage.removeItem('auditai_session');
+                currentUser = null;
+
                 authView.classList.remove('hidden');
                 appView.classList.add('hidden');
                 pendingMsg.classList.remove('hidden');
+
+                showAuthScreen('login-form');
+                if (tabLogin) tabLogin.classList.add('active');
+                if (tabRegister) tabRegister.classList.remove('active');
+                if (authTabsContainer) authTabsContainer.style.display = '';
             } else {
                 authView.classList.add('hidden');
                 appView.classList.remove('hidden');
@@ -657,30 +681,21 @@ const _genChecksum = (str) => {
         tabLogin.classList.add('active'); tabRegister.classList.remove('active');
     });
 
-    // Enviar Link de Recuperação
-    document.getElementById('btn-send-reset').addEventListener('click', () => {
+    // Enviar Link de Recuperação via Supabase Auth
+    document.getElementById('btn-send-reset').addEventListener('click', async () => {
         const email = document.getElementById('forgot-email').value.trim();
         if (!email) { errorMsg.innerText = 'Informe um e-mail válido.'; return; }
 
-        const userFound = db.users.find(u => u.email === email);
-        const resetCode = 'RST-' + Math.random().toString(36).substring(2,8).toUpperCase();
+        const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin,
+        });
 
-        if (userFound) {
-            userFound.resetToken = resetCode;
-            saveDB();
-
-            const settings = JSON.parse(localStorage.getItem('auditai_settings') || '{}');
-            if (typeof emailjs !== 'undefined' && settings.publicKey && settings.serviceId && settings.templateReset) {
-                emailjs.send(settings.serviceId, settings.templateReset, {
-                    to_email: email,
-                    to_name: userFound.name || 'Usuário',
-                    reset_code: resetCode
-                }).catch(err => console.error('Erro ao enviar email:', err));
-            } else {
-                console.warn('EmailJS: credenciais não configuradas ou biblioteca não carregada.');
-            }
+        if (error) {
+            errorMsg.innerText = "Erro: " + error.message;
+            return;
         }
-        // Sempre mostrar tela de enviado (por segurança, mesmo se email não existir)
+
+        // Mostrar tela de enviado
         document.getElementById('reset-email-display').innerText = email;
         showAuthScreen('reset-sent-msg');
         authTabsContainer.style.display = 'none';
@@ -688,82 +703,106 @@ const _genChecksum = (str) => {
     });
 
 
-    // Login
-    loginForm.addEventListener('submit', (e) => {
+    // Login via Supabase Auth
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('login-email').value.trim().toLowerCase();
         const pass = document.getElementById('login-pass').value.trim();
 
-        // EMERGENCY BYPASS FOR RUAN
-        if (email === 'ruangomes221102@gmail.com' && pass === '123456') {
-            const ruan = {
-                id: 'rec_ruan',
-                name: 'Ruan Gomes',
-                email: email,
-                pass: pass,
-                role: 'admin',
-                status: 'aprovado',
-                companyId: (db.companies && db.companies.length > 0) ? db.companies[0].id : null
-            };
-            // Force save to users if not there
-            if (!db.users.find(u => (u.email || "").toLowerCase() === email)) {
-                db.users.push(ruan);
-                saveDB();
-            }
-            sessionStorage.setItem('auditai_session', email);
-            currentUser = ruan;
-            updateAuthUI();
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: pass,
+        });
+
+        if (error) {
+            errorMsg.innerText = "Credenciais incorretas ou erro: " + error.message;
             return;
         }
 
-        const user = db.users.find(u => (u.email || "").toLowerCase() === email && u.pass === pass);
+        // Buscar dados complementares (role, status) no nosso DB interno
+        let user = db.users.find(u => (u.email || "").toLowerCase() === email);
+        
+        // Se for o Ruan, garantir que ele seja admin mesmo que não esteja no DB
+        if (email === 'ruangomes221102@gmail.com') {
+            if (!user) {
+                user = { id: data.user.id, name: 'Ruan Gomes', email: email, role: 'admin', status: 'aprovado' };
+                db.users.push(user);
+                saveDB();
+            }
+        }
+
         if (user) {
-            sessionStorage.setItem('auditai_session', user.email);
+            if (user.status === 'pendente') {
+                await supabase.auth.signOut();
+                sessionStorage.removeItem('auditai_session');
+                currentUser = null;
+                errorMsg.innerText = "Sua conta está aguardando aprovação do administrador.";
+                pendingMsg.classList.remove('hidden');
+                return;
+            }
             currentUser = user;
-            
-            // Tentar carregar dados da nuvem específicos deste usuário/empresa logo após o login
-            loadDB().then(() => {
-                updateAuthUI();
-            });
+            sessionStorage.setItem('auditai_session', email);
+            loadDB().then(() => updateAuthUI());
         } else {
-            errorMsg.innerText = "Credenciais incorretas!";
+            // Se o usuário existe no Supabase mas não no nosso DB interno (raro, mas possível)
+            // Vamos criá-lo no nosso DB interno como pendente para que o Admin possa ver e aprovar
+            const newUser = {
+                id: data.user.id,
+                name: email.split('@')[0],
+                email: email,
+                role: 'auditor',
+                companyId: null,
+                status: 'pendente'
+            };
+            db.users.push(newUser);
+            await saveDB();
+
+            await supabase.auth.signOut();
+            sessionStorage.removeItem('auditai_session');
+            currentUser = null;
+            errorMsg.innerText = "Sua conta está aguardando aprovação do administrador.";
+            pendingMsg.classList.remove('hidden');
         }
     });
 
-    // Register
-    regForm.addEventListener('submit', (e) => {
+    // Cadastro via Supabase Auth
+    regForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('reg-name').value;
         const email = document.getElementById('reg-email').value;
         const pass = document.getElementById('reg-pass').value;
 
-        if (db.users.find(u => u.email === email)) {
-            errorMsg.innerText = "E-mail já cadastrado!";
+        const { data, error } = await supabase.auth.signUp({
+            email: email,
+            password: pass,
+            options: {
+                data: { full_name: name }
+            }
+        });
+
+        if (error) {
+            errorMsg.innerText = "Erro ao cadastrar: " + error.message;
             return;
         }
 
+        // Salvar no nosso DB interno com status PENDENTE para aprovação do Admin
         const newUser = {
-            id: 'u_' + Date.now(),
-            name, email, pass, role: 'auditor', companyId: null, // Auditor por padrão
-            status: 'aprovado'
+            id: data.user.id,
+            name, email, role: 'auditor', companyId: null,
+            status: 'pendente' 
         };
 
-        db.users.push(newUser);
-        saveDB();
-
-        // Enviar email de confirmação de cadastro via EmailJS
-        const settings = JSON.parse(localStorage.getItem('auditai_settings') || '{}');
-        if (typeof emailjs !== 'undefined' && settings.publicKey && settings.serviceId && settings.templateRegister) {
-            emailjs.send(settings.serviceId, settings.templateRegister, {
-                to_email: email,
-                to_name: name
-            }).catch(err => console.error('Erro ao enviar email de cadastro:', err));
-        } else {
-            console.warn('EmailJS: credenciais não configuradas ou biblioteca não carregada.');
+        if (!db.users.find(u => (u.email||"").toLowerCase() === email.toLowerCase())) {
+            db.users.push(newUser);
+            try {
+                await saveDB();
+            } catch (saveErr) {
+                console.error("Erro ao salvar novo usuário no DB:", saveErr);
+                // Mesmo se falhar o saveDB (ex: RLS), o usuário já foi criado no Supabase Auth
+            }
         }
 
-
-        // Mostrar tela de confirmação de cadastro (sem auto-login)
+        // Mostrar tela de confirmação (Supabase enviará o email automaticamente)
         document.getElementById('register-email-display').innerText = email;
         showAuthScreen('register-sent-msg');
         authTabsContainer.style.display = 'none';
@@ -778,20 +817,37 @@ const _genChecksum = (str) => {
         });
     });
 
-    // Logout
-    btnLogout.addEventListener('click', () => {
+    // Logout via Supabase Auth
+    btnLogout.addEventListener('click', async () => {
+        await supabase.auth.signOut();
         sessionStorage.removeItem('auditai_session');
         currentUser = null;
         updateAuthUI();
         
-        // Reset auth screen view to Login specifically
-        if (typeof showAuthScreen === 'function') showAuthScreen('login-form');
+        showAuthScreen('login-form');
         if (typeof tabLogin !== 'undefined' && typeof tabRegister !== 'undefined') {
             tabLogin.classList.add('active');
             tabRegister.classList.remove('active');
         }
         if (typeof authTabsContainer !== 'undefined' && authTabsContainer) {
             authTabsContainer.style.display = '';
+        }
+    });
+
+    // Ouvir mudanças no estado de autenticação (Auto-login e Logout)
+    supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+            const email = session.user.email;
+            const user = db.users.find(u => (u.email || "").toLowerCase() === email.toLowerCase());
+            if (user) {
+                currentUser = user;
+                sessionStorage.setItem('auditai_session', email);
+                updateAuthUI();
+            }
+        } else if (event === 'SIGNED_OUT') {
+            currentUser = null;
+            sessionStorage.removeItem('auditai_session');
+            updateAuthUI();
         }
     });
 
