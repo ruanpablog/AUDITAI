@@ -1143,6 +1143,17 @@
                                 </div>
                             </div>
 
+                            <!-- Configuração da IA (Gemini) -->
+                            <div style="margin-top: 32px; padding: 20px; border: 1px solid var(--primary); background: rgba(239, 68, 68, 0.03); border-radius: 8px;">
+                                <h3 style="color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;"><i class="ph ph-magic-wand"></i> Configuração da IA (Gemini)</h3>
+                                <p style="font-size: 0.9rem; margin-bottom: 12px; color: var(--text-body);">Insira abaixo a sua chave de API do Gemini para gerar os checklists e pontos de atenção inteligentes a partir dos seus POPs.</p>
+                                <div class="form-group" style="margin-bottom: 16px;">
+                                    <label style="font-weight: 600;">Chave de API do Gemini</label>
+                                    <input type="password" id="settings-gemini-key" placeholder="Digite sua API Key (AIzaSy...)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;">
+                                </div>
+                                <button class="btn btn-primary" id="btn-save-gemini-key"><i class="ph ph-floppy-disk"></i> Salvar Chave do Gemini</button>
+                            </div>
+
                             <div style="margin-top: 32px; padding: 20px; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.05); border-radius: 8px;">
                                 <h3 style="color: #d97706; margin-bottom: 12px;"><i class="ph ph-shield-warning"></i> Correção do Erro de Permissão (RLS)</h3>
                                 <p style="font-size: 0.9rem; margin-bottom: 12px; color: var(--text-body);">Se você vê o erro <b>"RLS Policy"</b> ou <b>"Não permitiu gravar esta nova linha"</b>, siga estes passos no seu painel do Supabase:</p>
@@ -1350,6 +1361,16 @@ FOR ALL USING (true) WITH CHECK (true);</pre>
                 <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 12px; opacity: 0.6;">Processamento local — sem Internet, sem custo.</p>
             </div>
             <div id="ai-step-review" class="hidden">
+                <!-- Pontos de Atenção sugeridos pela IA -->
+                <div id="ai-points-of-attention" class="hidden" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 16px; border-radius: 12px; margin-bottom: 20px;">
+                    <h4 style="color: #f59e0b; margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.95rem;">
+                        <i class="ph ph-warning-octagon" style="font-size: 1.2rem;"></i> Pontos de Atenção Sugeridos pela IA
+                    </h4>
+                    <ul id="ai-attention-list" style="margin: 0; padding-left: 20px; font-size: 0.85rem; color: #f3f4f6; line-height: 1.5; display: flex; flex-direction: column; gap: 4px;">
+                        <!-- Populado via JS -->
+                    </ul>
+                </div>
+
                 <h3 style="margin-bottom: 16px;">Itens Extraídos</h3>
                 
                 <div class="form-row" style="display:flex; gap:16px; margin-bottom: 16px;">

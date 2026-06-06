@@ -336,7 +336,10 @@ const _genChecksum = (str) => {
 
     // --- Settings Persistence ---
     function loadSettings() {
-        // Obsoleto
+        const inputKey = document.getElementById('settings-gemini-key');
+        if (inputKey) {
+            inputKey.value = db.config?.gemini_key || '';
+        }
     }
 
 
@@ -4150,26 +4153,48 @@ const _genChecksum = (str) => {
             const progressMsg = document.getElementById('ai-processing-msg');
 
             try {
-                // MOTOR LOCAL: sempre padrão, sem dependência de API
-                if (progressMsg) progressMsg.innerText = 'Extraindo texto do documento...';
-                const text = await extractTextFromFile(selectedPopFile, progressMsg);
+                let items = [];
+                let attentionPoints = [];
+                const apiKey = db.config?.gemini_key;
 
-                if (!text || text.trim().length < 30) {
-                    throw new Error('Não foi possível extrair texto suficiente do arquivo. Verifique se o documento contém texto legível.');
+                if (apiKey && apiKey.trim() !== "" && apiKey !== "AIzaSyAYicGW2sbsnprhWEHmRDG3mWM2DntSfnI_change_me") {
+                    if (progressMsg) progressMsg.innerText = 'Analisando documento com Inteligência Artificial (Gemini)...';
+                    try {
+                        const result = await processFileWithGemini(selectedPopFile);
+                        if (result && result.checklist) {
+                            items = result.checklist;
+                            attentionPoints = result.attentionPoints || [];
+                        } else if (Array.isArray(result)) {
+                            items = result;
+                        }
+                    } catch (geminiError) {
+                        console.warn('Erro ao processar com Gemini, usando motor local como fallback:', geminiError);
+                    }
                 }
 
-                if (progressMsg) progressMsg.innerText = 'Analisando obrigatoriedades e critérios do POP...';
-                await new Promise(r => setTimeout(r, 600));
-                const items = analyzeTextLocally(text);
+                // Fallback se Gemini não gerou itens ou não foi executado
+                if (items.length === 0) {
+                    if (progressMsg) progressMsg.innerText = 'Extraindo texto do documento...';
+                    const text = await extractTextFromFile(selectedPopFile, progressMsg);
+
+                    if (!text || text.trim().length < 30) {
+                        throw new Error('Não foi possível extrair texto suficiente do arquivo. Verifique se o documento contém texto legível.');
+                    }
+
+                    if (progressMsg) progressMsg.innerText = 'Analisando obrigatoriedades com motor local (fallback)...';
+                    await new Promise(r => setTimeout(r, 600));
+                    items = analyzeTextLocally(text);
+                    attentionPoints = generateLocalAttentionPoints(text);
+                }
 
                 if (!items || items.length === 0) {
                     throw new Error('Nenhum item de checklist foi gerado. O documento pode não conter obrigatoriedades identificáveis.');
                 }
 
-                renderAiReview(items);
+                renderAiReview(items, attentionPoints);
 
             } catch (error) {
-                console.error('Erro na análise local:', error);
+                console.error('Erro na análise:', error);
                 document.getElementById('ai-step-processing').classList.add('hidden');
                 document.getElementById('ai-step-upload').classList.remove('hidden');
                 alert('Erro na análise: ' + error.message);
@@ -4398,15 +4423,25 @@ const _genChecksum = (str) => {
         
         const base64Data = await base64Promise;
 
-        const prompt = `Analise este documento de Procedimento Operacional Padrão (POP) ou imagem técnica. 
-        1. Extraia de 5 a 12 itens de verificação objetivos e práticos.
-        2. Para cada item, defina um nível de SEVERIDADE baseado no risco operacional:
+        const prompt = `Analise este documento de Procedimento Operacional Padrão (POP) ou imagem técnica.
+        1. Extraia de 5 a 12 itens de verificação objetivos e práticos para compor um checklist de auditoria.
+        2. Para cada item do checklist, defina um nível de SEVERIDADE baseado no risco operacional:
            - "Crítico": Risco de vida, contaminação grave, interdição ou multa pesada.
            - "Médio": Falha operacional importante, impacto na qualidade ou organização.
            - "Leve": Detalhe estético, organização menor ou melhoria de processo.
+        3. Identifique e liste de 2 a 5 PONTOS DE ATENÇÃO (riscos críticos, pontos sensíveis ou cuidados especiais descritos no POP) que o auditor ou gerente deve focar.
         
-        RETORNE O RESULTADO ESTRITAMENTE COMO UM ARRAY JSON DE OBJETOS.
-        Exemplo de formato: [{"question": "O produto está dentro da validade?", "severity": "Crítico"}, {"question": "Piso está varrido?", "severity": "Leve"}]`;
+        RETORNE O RESULTADO ESTRITAMENTE COMO UM OBJETO JSON COM A SEGUINTE ESTRUTURA:
+        {
+          "checklist": [
+            {"question": "O produto está dentro da validade?", "severity": "Crítico"},
+            {"question": "Piso está varrido?", "severity": "Leve"}
+          ],
+          "attentionPoints": [
+            "Foco na temperatura do freezer que deve ser mantida abaixo de -18°C para evitar contaminação.",
+            "Atenção redobrada ao uso de EPIs na manipulação de produtos químicos."
+          ]
+        }`;
 
         let mimeType = file.type || "image/jpeg";
         if (file.name.toLowerCase().endsWith('.pdf')) mimeType = "application/pdf";
@@ -4441,17 +4476,55 @@ const _genChecksum = (str) => {
             content = content.replace(/```json/g, '').replace(/```/g, '').trim();
             return JSON.parse(content);
         } catch (e) {
-            const match = content.match(/\[.*\]/s);
+            const match = content.match(/\{.*\}/s);
             if (match) return JSON.parse(match[0]);
             throw new Error('Falha ao processar sugestões da IA: Formato inválido.');
         }
     }
 
-    function renderAiReview(items) {
+    function generateLocalAttentionPoints(text) {
+        const lower = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const points = [];
+        
+        if (lower.includes('temperatura') || lower.includes('refriger')) {
+            points.push("🌡️ <b>Controle de Temperatura:</b> O documento menciona regras de temperatura. Garanta que os termômetros e planilhas estejam calibrados.");
+        }
+        if (lower.includes('validade') || lower.includes('vencimento') || lower.includes('vencido')) {
+            points.push("📅 <b>Validade de Produtos:</b> Risco de produtos vencidos detectado. Mantenha controle rígido com o PEPS (Primeiro que Entra, Primeiro que Sai).");
+        }
+        if (lower.includes('contaminacao') || lower.includes('higiene') || lower.includes('limpeza')) {
+            points.push("🧼 <b>Higienização e Contaminação:</b> Foco no procedimento de higienização de bancadas, utensílios e mãos para evitar contaminação cruzada.");
+        }
+        if (lower.includes('epi') || lower.includes('protecao') || lower.includes('luva') || lower.includes('touca')) {
+            points.push("🥽 <b>Uso de EPIs:</b> O uso de Equipamentos de Proteção Individual é mandatório para segurança da equipe.");
+        }
+        if (lower.includes('praga') || lower.includes('inseto') || lower.includes('roedor')) {
+            points.push("🐭 <b>Controle de Pragas:</b> Atenção a frestas, ralos e cronograma de dedetização.");
+        }
+        
+        if (points.length === 0) {
+            points.push("📌 <b>Rotina Geral:</b> Garanta o acompanhamento diário dos processos operacionais descritos neste POP.");
+        }
+        return points;
+    }
+
+    function renderAiReview(items, attentionPoints) {
         document.getElementById('ai-step-processing').classList.add('hidden');
         document.getElementById('ai-step-review').classList.remove('hidden');
         const container = document.getElementById('ai-extracted-items');
         container.innerHTML = '';
+        
+        const attentionContainer = document.getElementById('ai-points-of-attention');
+        const attentionList = document.getElementById('ai-attention-list');
+        
+        if (attentionContainer && attentionList) {
+            if (attentionPoints && attentionPoints.length > 0) {
+                attentionContainer.classList.remove('hidden');
+                attentionList.innerHTML = attentionPoints.map(p => `<li>${p}</li>`).join('');
+            } else {
+                attentionContainer.classList.add('hidden');
+            }
+        }
         
         items.forEach((item, i) => {
             const questionText = typeof item === 'object' ? item.question : item;
@@ -5021,6 +5094,25 @@ const btnPublish = document.getElementById('btn-publish-cloud');
 if (btnPublish) {
     btnPublish.addEventListener('click', () => {
         if (typeof window.publishToCloud === 'function') window.publishToCloud();
+    });
+}
+
+const btnSaveGeminiKey = document.getElementById('btn-save-gemini-key');
+if (btnSaveGeminiKey) {
+    btnSaveGeminiKey.addEventListener('click', async () => {
+        const inputKey = document.getElementById('settings-gemini-key');
+        if (inputKey) {
+            const key = inputKey.value.trim();
+            if (!db.config) db.config = {};
+            db.config.gemini_key = key;
+            try {
+                await saveDB();
+                alert('Chave da API do Gemini salva com sucesso!');
+            } catch (err) {
+                console.error('Erro ao salvar chave da API do Gemini:', err);
+                alert('Erro ao salvar no banco local.');
+            }
+        }
     });
 }
 
