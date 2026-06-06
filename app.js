@@ -1936,7 +1936,8 @@ const _genChecksum = (str) => {
 
             html += `
                 <div class="audit-item" data-item="${item.id}" data-critical="${item.eh_critico}" data-alcada="${item.eh_alcada}" style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px dashed var(--border);">
-                    <p class="audit-question" style="font-weight: 600; margin-bottom: 12px;">${item.question} ${criticoBadge} ${alcadaBadge}</p>
+                    <p class="audit-question" style="font-weight: 600; margin-bottom: ${item.instrucoes ? '4px' : '12px'};">${item.question} ${criticoBadge} ${alcadaBadge}</p>
+                    ${item.instrucoes ? `<p class="audit-instruction" style="font-size: 0.8rem; color: #9ca3af; margin-bottom: 12px; font-style: italic; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 6px; border-left: 2px solid var(--primary);"><i class="ph ph-info" style="vertical-align: middle;"></i> <b>Como auditar:</b> ${item.instrucoes}</p>` : ''}
                     ${beforePhotoHtml}
                     <div class="rating-group" style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="rating-btn ruim" data-val="ruim"><i class="ph ph-smiley-sad"></i> Ruim</button>
@@ -4553,6 +4554,7 @@ const _genChecksum = (str) => {
         items.forEach((item, i) => {
             const questionText = typeof item === 'object' ? item.question : item;
             const severity = typeof item === 'object' ? item.severity : 'Médio';
+            const instructionsText = typeof item === 'object' ? (item.instructions || item.como_auditar || '') : '';
 
             const div = document.createElement('div');
             div.className = 'ai-review-item';
@@ -4560,9 +4562,10 @@ const _genChecksum = (str) => {
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:start;">
                     <input type="checkbox" checked class="item-ai-check" id="check-ai-${i}" style="width:20px; height:20px; margin-top:10px;">
-                    <div style="flex:1;">
-                        <textarea class="item-ai-question" style="width:100%; min-height:60px; padding:8px; border-radius:6px; border:1px solid var(--border); background:rgba(0,0,0,0.2); color:white; font-size:0.9rem;">${questionText}</textarea>
-                        <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+                    <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+                        <textarea class="item-ai-question" placeholder="Pergunta de auditoria" style="width:100%; min-height:50px; padding:8px; border-radius:6px; border:1px solid var(--border); background:rgba(0,0,0,0.2); color:white; font-size:0.9rem;">${questionText}</textarea>
+                        <textarea class="item-ai-instructions" placeholder="O que e como auditar (Instrução prática)" style="width:100%; min-height:40px; padding:8px; border-radius:6px; border:1px solid var(--border); background:rgba(0,0,0,0.1); color:#9ca3af; font-size:0.8rem; border-color:rgba(255,255,255,0.05);">${instructionsText}</textarea>
+                        <div style="display:flex; align-items:center; gap:10px; margin-top:4px;">
                             <label style="font-size:0.75rem; color:var(--text-muted);">Severidade:</label>
                             <select class="item-ai-severity" style="padding:4px 8px; border-radius:4px; font-size:0.8rem; background:var(--primary); color:white; border:none;">
                                 <option value="Leve" ${severity === 'Leve' ? 'selected' : ''}>Leve</option>
@@ -4586,7 +4589,8 @@ const _genChecksum = (str) => {
             if (isChecked) {
                 finalItems.push({
                     question: div.querySelector('.item-ai-question').value.trim(),
-                    severity: div.querySelector('.item-ai-severity').value
+                    severity: div.querySelector('.item-ai-severity').value,
+                    instructions: div.querySelector('.item-ai-instructions').value.trim()
                 });
             }
         });
@@ -4624,6 +4628,7 @@ const _genChecksum = (str) => {
                     dept_id: deptId,
                     cat_id: 'none',
                     question: f.question,
+                    instrucoes: f.instructions,
                     fluxo: flow,
                     eh_critico: f.severity === 'Crítico',
                     severity_level: f.severity,
@@ -4992,7 +4997,10 @@ window.renderAdminChecklists = function () {
             const fluxoLabel = i.fluxo === 'rotina' ? '<span class="badge badge-accent">Rotina</span>' : '<span class="badge badge-outline">Auditoria</span>';
             
             tr.innerHTML = `
-                <td>${i.question}</td>
+                <td>
+                    <strong>${i.question}</strong>
+                    ${i.instrucoes ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; font-style:italic;"><i class="ph ph-info"></i> <b>Como auditar:</b> ${i.instrucoes}</div>` : ''}
+                </td>
                 <td>${fluxoLabel}</td>
                 <td>${deptName}</td>
                 <td>${catName}</td>
