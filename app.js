@@ -4343,8 +4343,9 @@ const _genChecksum = (str) => {
 
             // Converter frase em pergunta de checklist
             let question = formatAsQuestion(sentence.trim());
-
-            checklistItems.push({ question, severity });
+            if (question) {
+                checklistItems.push({ question, severity });
+            }
 
             if (checklistItems.length >= 15) return;
         });
@@ -4359,29 +4360,44 @@ const _genChecksum = (str) => {
     }
 
     function formatAsQuestion(sentence) {
-        // Remove numeração inicial (1. ou 1))
-        sentence = sentence.replace(/^\d+[\.\)]\s*/, '').trim();
+        // Remove numeração inicial, setas, traços e caracteres especiais de formatação
+        sentence = sentence.replace(/^[\d\.\)\-\s\>➤]+/, '').trim();
+        
+        const lower = sentence.toLowerCase();
+        
+        // Descartar frases que contenham metadados comuns de cabeçalhos e objetivos de POP
+        if (lower.includes('objetivo') || 
+            lower.includes('procedimento operacional') || 
+            lower.includes('historico de revisoes') || 
+            lower.includes('folha') || 
+            lower.includes('versao') ||
+            lower.includes('de abril') || // evitar datas comuns
+            lower.includes('de maio') || 
+            lower.includes('de junho') || 
+            lower.length < 25 || // descartar frases muito curtas (geralmente lixo de OCR ou cabeçalho)
+            lower.length > 220) { // descartar frases longas demais
+            return null;
+        }
+
         // Capitalizar primeira letra
         sentence = sentence.charAt(0).toUpperCase() + sentence.slice(1);
         
         // Se já é uma pergunta, retornar como está
         if (sentence.endsWith('?')) return sentence;
-
+ 
         // Transformar em pergunta baseada no tipo de frase
-        const lower = sentence.toLowerCase();
-        
         if (lower.startsWith('verificar') || lower.startsWith('checar') || lower.startsWith('conferir')) {
             return sentence.replace(/^(Verificar|Checar|Conferir)/i, (m) => `${m} se`) + '?';
         }
         if (lower.startsWith('garantir')) {
-            return sentence + '?';
+            return sentence.replace(/^(Garantir)/i, (m) => `Garantido que ocorra a`) + '?';
         }
         if (lower.startsWith('higienizar') || lower.startsWith('limpar')) {
-            return 'A área/equipamento foi ' + sentence.toLowerCase() + '?';
+            return 'A higienização/limpeza foi realizada: ' + sentence.toLowerCase() + '?';
         }
         
-        // Padrão: prefixar com "O procedimento de"
-        return 'O procedimento está sendo seguido: ' + sentence.toLowerCase() + '?';
+        // Padrão menos redundante:
+        return 'Está sendo realizado: ' + sentence.toLowerCase() + '?';
     }
 
     function generateDomainItems(text) {
@@ -4423,23 +4439,31 @@ const _genChecksum = (str) => {
         
         const base64Data = await base64Promise;
 
-        const prompt = `Analise este documento de Procedimento Operacional Padrão (POP) ou imagem técnica.
-        1. Extraia de 5 a 12 itens de verificação objetivos e práticos para compor um checklist de auditoria.
-        2. Para cada item do checklist, defina um nível de SEVERIDADE baseado no risco operacional:
-           - "Crítico": Risco de vida, contaminação grave, interdição ou multa pesada.
-           - "Médio": Falha operacional importante, impacto na qualidade ou organização.
-           - "Leve": Detalhe estético, organização menor ou melhoria de processo.
-        3. Identifique e liste de 2 a 5 PONTOS DE ATENÇÃO (riscos críticos, pontos sensíveis ou cuidados especiais descritos no POP) que o auditor ou gerente deve focar.
+        const prompt = `Você é um auditor especialista em processos operacionais e garantia de qualidade.
+        Analise o documento de Procedimento Operacional Padrão (POP) ou imagem fornecida e gere um checklist de auditoria profissional.
+        
+        REGRAS IMPORTANTES PARA GERAR O CHECKLIST:
+        1. Crie entre 5 e 12 perguntas de auditoria claras, diretas, curtas e profissionais em português.
+        2. Cada item deve questionar se uma regra ou critério operacional prático do POP está sendo cumprido na prática.
+        3. CRÍTICO: NÃO copie trechos de texto longos de forma literal. NÃO inclua metadados como datas (ex: "23 de abril de 2026"), códigos de processo, objetivos gerais do documento (ex: "001 objetivo padronizar..."), números de páginas, cabeçalhos, logos ou textos introdutórios.
+        4. Reescreva os pontos técnicos em formato de pergunta acionável e concisa. Exemplos:
+           - Em vez de: "Realizar carga geral de preços nas balanças e ler o qr code para ver como dar carga", use: "A carga geral de preços foi enviada e aplicada corretamente nas balanças?"
+           - Em vez de: "Garantir a higienização das mãos com sabonete antisséptico e álcool gel", use: "Os colaboradores realizaram a higienização das mãos com antisséptico e álcool em gel?"
+        5. Para cada item do checklist, defina o nível de SEVERIDADE com base no risco operacional:
+           - "Crítico": Risco de segurança alimentar, acidentes, multas, interdição ou parada operacional.
+           - "Médio": Impacto na qualidade do produto, padrão de atendimento ou falha importante de fluxo de processo.
+           - "Leve": Desvio estético, organização simples ou melhoria processual secundária.
+           
+        REGRAS PARA PONTOS DE ATENÇÃO:
+        1. Identifique e liste de 2 a 5 PONTOS DE ATENÇÃO (focos de maior atenção ou risco associado ao POP).
         
         RETORNE O RESULTADO ESTRITAMENTE COMO UM OBJETO JSON COM A SEGUINTE ESTRUTURA:
         {
           "checklist": [
-            {"question": "O produto está dentro da validade?", "severity": "Crítico"},
-            {"question": "Piso está varrido?", "severity": "Leve"}
+            {"question": "Pergunta curta e direta em formato de auditoria?", "severity": "Crítico|Médio|Leve"}
           ],
           "attentionPoints": [
-            "Foco na temperatura do freezer que deve ser mantida abaixo de -18°C para evitar contaminação.",
-            "Atenção redobrada ao uso de EPIs na manipulação de produtos químicos."
+            "Ponto de atenção curto focado em risco..."
           ]
         }`;
 
