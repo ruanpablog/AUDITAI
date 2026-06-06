@@ -4440,33 +4440,36 @@ const _genChecksum = (str) => {
         
         const base64Data = await base64Promise;
 
-        const prompt = `Você é um auditor especialista em processos operacionais e garantia de qualidade.
-        Analise o documento de Procedimento Operacional Padrão (POP) ou imagem fornecida e gere um checklist de auditoria profissional.
-        
-        REGRAS IMPORTANTES PARA GERAR O CHECKLIST:
-        1. Crie entre 5 e 12 perguntas de auditoria claras, diretas, curtas e profissionais em português.
-        2. Cada item deve questionar se uma regra ou critério operacional prático do POP está sendo cumprido na prática.
-        3. CRÍTICO: NÃO copie trechos de texto longos de forma literal. NÃO inclua metadados como datas (ex: "23 de abril de 2026"), códigos de processo, objetivos gerais do documento (ex: "001 objetivo padronizar..."), números de páginas, cabeçalhos, logos ou textos introdutórios.
-        4. Reescreva os pontos técnicos em formato de pergunta acionável e concisa. Exemplos:
-           - Em vez de: "Realizar carga geral de preços nas balanças e ler o qr code para ver como dar carga", use: "A carga geral de preços foi enviada e aplicada corretamente nas balanças?"
-           - Em vez de: "Garantir a higienização das mãos com sabonete antisséptico e álcool gel", use: "Os colaboradores realizaram a higienização das mãos com antisséptico e álcool em gel?"
-        5. Para cada item do checklist, defina o nível de SEVERIDADE com base no risco operacional:
-           - "Crítico": Risco de segurança alimentar, acidentes, multas, interdição ou parada operacional.
-           - "Médio": Impacto na qualidade do produto, padrão de atendimento ou falha importante de fluxo de processo.
-           - "Leve": Desvio estético, organização simples ou melhoria processual secundária.
-           
-        REGRAS PARA PONTOS DE ATENÇÃO:
-        1. Identifique e liste de 2 a 5 PONTOS DE ATENÇÃO (focos de maior atenção ou risco associado ao POP).
-        
-        RETORNE O RESULTADO ESTRITAMENTE COMO UM OBJETO JSON COM A SEGUINTE ESTRUTURA:
-        {
-          "checklist": [
-            {"question": "Pergunta curta e direta em formato de auditoria?", "severity": "Crítico|Médio|Leve"}
-          ],
-          "attentionPoints": [
-            "Ponto de atenção curto focado em risco..."
-          ]
-        }`;
+        const prompt = `Você é o motor de inteligência artificial avançado do aplicativo AUDITÁI. Sua especialidade é engenharia de processos varejistas, prevenção de perdas e auditoria de riscos operacionais. Sua missão é ler documentos de POP (Procedimento Operacional Padrão) ou imagens técnicas e transformá-los em checklists de auditoria de alta performance.
+
+Para entregar o resultado exatamente no padrão esperado, você deve aplicar o seguinte método de análise em quatro etapas:
+
+1. MAPEAR O FLUXO: Identifique os momentos-chave do dia (Ex: abertura, recebimento, virada de turno, fechamento) e as responsabilidades de cada cargo.
+2. RASTREAR O RISCO FINANCEIRO: Para cada instrução do POP, pergunte-se: "Se o funcionário não fizer isso, ou fizer malfeito, onde a loja perde dinheiro? Rompe estoque? Gera multa fiscal? Causa quebra física?".
+3. CRIAR A CONTRAPROVA: Esqueça o que o funcionário "diz" que faz. Pense em como o auditor pode "provar" visualmente ou via sistema se a tarefa foi mesmo executada.
+4. TRADUZIR EM AÇÃO: Formule perguntas investigativas e maduras, eliminando completamente termos genéricos e estruturas como "Está sendo realizado: [texto do POP]?".
+
+❌ O QUE NÃO FAZER:
+- Nunca copie frases literais do documento.
+- Nunca faça perguntas óbvias ou superficiais que possam ser respondidas com um "sim" sem verificação física (Ex: "O setor está limpo?").
+
+📋 PADRÃO DE RETORNO (JSON ESTRUTURADO):
+Gere entre 5 e 12 itens de auditoria e identifique de 2 a 5 pontos de atenção críticos (riscos ou cuidados especiais gerais).
+
+RETORNE O RESULTADO ESTRITAMENTE COMO UM OBJETO JSON COM A SEGUINTE ESTRUTURA:
+{
+  "checklist": [
+    {
+      "block": "Nome do Bloco / Identificação do Ponto Crítico de Risco (Ex: Tratativa de Avarias e Recuperação de Crédito)",
+      "question": "Pergunta de Auditoria formulada de forma analítica, direta e investigativa, focando no ponto onde o erro humano ou a quebra acontece",
+      "severity": "Crítico|Médio|Leve",
+      "instructions": "O que e como auditar: Instrução prática passo a passo indicando onde o auditor deve olhar, qual amostragem física de itens deve pegar ou qual tela/rotina de sistema deve cruzar no chão de loja"
+    }
+  ],
+  "attentionPoints": [
+    "Ponto de atenção focado no risco operacional principal do processo"
+  ]
+}`;
 
         let mimeType = file.type || "image/jpeg";
         if (file.name.toLowerCase().endsWith('.pdf')) mimeType = "application/pdf";
@@ -4552,7 +4555,10 @@ const _genChecksum = (str) => {
         }
         
         items.forEach((item, i) => {
-            const questionText = typeof item === 'object' ? item.question : item;
+            let questionText = typeof item === 'object' ? item.question : item;
+            if (typeof item === 'object' && item.block && !questionText.includes(item.block)) {
+                questionText = `[${item.block}] ${questionText}`;
+            }
             const severity = typeof item === 'object' ? item.severity : 'Médio';
             const instructionsText = typeof item === 'object' ? (item.instructions || item.como_auditar || '') : '';
 
