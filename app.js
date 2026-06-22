@@ -2302,20 +2302,28 @@ const _genChecksum = (str) => {
         }
 
         if (currentAudit.departments.length > 0) {
-            db.audits.push(JSON.parse(JSON.stringify(currentAudit))); // deep copy
-            saveDB(true); // SYNC AUTOMÁTICO AO FINALIZAR
+            const auditCopy = JSON.parse(JSON.stringify(currentAudit)); // deep copy antes de resetar
+            db.audits.push(auditCopy);
+
+            // Reset memória imediatamente antes de salvar para não travar a UI
+            currentAudit = { id: null, storeId: null, date: null, managerName: '', supervisorName: '', departments: [] };
+
+            // Exibe o relatório IMEDIATAMENTE, sem esperar o salvamento
+            showReport(auditCopy);
+
+            // Salva em background (localStorage + cloud) sem bloquear a thread principal
+            setTimeout(() => {
+                try {
+                    saveDB(true); // SYNC AUTOMÁTICO AO FINALIZAR (em background)
+                } catch (saveErr) {
+                    console.error('Erro ao salvar auditoria no banco:', saveErr);
+                }
+            }, 0);
         } else {
             console.warn('Tentativa abortada: auditoria vazia.');
             alert('Não foi possível finalizar: nenhum setor foi avaliado.');
             return; // Retorna cedo para evitar crash e reset da memória
         }
-
-        // Reset Memory
-        currentAudit = { id: null, storeId: null, date: null, managerName: '', supervisorName: '', departments: [] };
-        
-        // Show Report
-        const justSaved = db.audits[db.audits.length - 1];
-        showReport(justSaved);
     }
 
     function updateProgressBar(stepIndex) {
