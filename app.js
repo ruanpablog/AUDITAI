@@ -102,9 +102,78 @@ const _genChecksum = (str) => {
         return 'auditai_main';
     };
 
+    // --- Gerenciamento de Fotos Separado (evita serialização pesada no DB) ---
+    const _photosStoreKey = 'auditai_photos';
+
+    const _savePhotosStore = (store) => {
+        try {
+            localStorage.setItem(_photosStoreKey, JSON.stringify(store));
+        } catch(e) {
+            console.warn('Não foi possível salvar fotos no localStorage:', e.message);
+        }
+    };
+
+    const _loadPhotosStore = () => {
+        try {
+            const raw = localStorage.getItem(_photosStoreKey);
+            return raw ? JSON.parse(raw) : {};
+        } catch(e) {
+            return {};
+        }
+    };
+
+    // Extrai fotos do db, salva na store separada, retorna db limpo (sem Base64)
+    const _extractPhotosFromDB = (dbObj) => {
+        const store = _loadPhotosStore();
+        const dbClean = JSON.parse(JSON.stringify(dbObj)); // cópia rasa para não mutar o original
+        (dbClean.audits || []).forEach(audit => {
+            (audit.departments || []).forEach(dept => {
+                (dept.responses || []).forEach(resp => {
+                    if (resp.photos && resp.photos.length > 0) {
+                        resp.photos = resp.photos.map(photo => {
+                            // Se já é um photoId (não começa com data: ou http), mantém
+                            if (!photo || (!photo.startsWith('data:') && !photo.startsWith('http'))) return photo;
+                            // Gera ID único para a foto e salva na store
+                            const photoId = 'ph_' + (resp.t || Date.now()) + '_' + Math.random().toString(36).slice(2, 7);
+                            store[photoId] = photo;
+                            return photoId;
+                        });
+                    }
+                });
+            });
+        });
+        _savePhotosStore(store);
+        return dbClean;
+    };
+
+    // Restaura fotos do store de volta para o db em memória
+    const _injectPhotosIntoAudits = (audits) => {
+        const store = _loadPhotosStore();
+        (audits || []).forEach(audit => {
+            (audit.departments || []).forEach(dept => {
+                (dept.responses || []).forEach(resp => {
+                    if (resp.photos && resp.photos.length > 0) {
+                        resp.photos = resp.photos.map(photoId => {
+                            if (!photoId) return photoId;
+                            // Se é um photoId da store, resolve para Base64/URL
+                            if (photoId.startsWith('ph_')) return store[photoId] || photoId;
+                            return photoId; // URL http ou base64 direta (legado)
+                        });
+                    }
+                });
+            });
+        });
+    };
+
     const saveDB = (syncCloud = true, forceMain = false) => {
         if (db.audits) db.audits = db.audits.filter(a => a && a.id && a.date);
-        const jsonStr = JSON.stringify(db);
+        
+        // Extrai fotos para store separada — o dbClean só tem photoIds (strings curtas)
+        const dbClean = _extractPhotosFromDB(db);
+        // Atualiza o db em memória com os photoIds (para consistência)
+        db.audits = dbClean.audits;
+
+        const jsonStr = JSON.stringify(dbClean);
         const checksum = _genChecksum(jsonStr);
         const obfuscated = _obfuscate(jsonStr);
         localStorage.setItem('auditai_db', JSON.stringify({
@@ -114,11 +183,11 @@ const _genChecksum = (str) => {
         
         if (syncCloud) {
             const cloudId = forceMain ? 'auditai_main' : getCloudId();
-            return supabase.from('app_state').upsert({ id: cloudId, db_data: db }, { onConflict: 'id' })
+            // Envia dbClean para nuvem (sem base64 pesado)
+            return supabase.from('app_state').upsert({ id: cloudId, db_data: dbClean }, { onConflict: 'id' })
                 .then(({error}) => { 
                     if(error) {
                         console.error("Erro Sync Nuvem:", error);
-                        // Se for erro de RLS, dar uma dica no console
                         if (error.message.includes('row-level security')) {
                             console.warn("DICA: Verifique as políticas de RLS na tabela 'app_state' no Supabase.");
                         }
@@ -538,17 +607,16 @@ const _genChecksum = (str) => {
         
         db.audits = mergedAudits;
 
+        // Restaurar fotos do store separado para a memória (relatórios e visualizações funcionam normalmente)
+        _injectPhotosIntoAudits(db.audits);
+
         // Se o merge trouxe novos dados locais que não estavam na nuvem, sobe eles agora
         if (auditsChanged) {
              console.log("Novas auditorias detectadas. Sincronizando com a nuvem...");
              saveDB(true);
         } else if (cloudData) {
-             // Apenas atualiza o backup local se veio da nuvem
-             const jsonStr = JSON.stringify(db);
-             localStorage.setItem('auditai_db', JSON.stringify({
-                 data: _obfuscate(jsonStr),
-                 sig: _genChecksum(jsonStr)
-             }));
+             // Apenas atualiza o backup local se veio da nuvem (sem sync na nuvem)
+             saveDB(false);
         }
         
         // Sanitizações globais e injeções (Ruan user)
@@ -2302,29 +2370,31 @@ const _genChecksum = (str) => {
         }
 
         if (currentAudit.departments.length > 0) {
-            const auditCopy = JSON.parse(JSON.stringify(currentAudit)); // deep copy antes de resetar
-            db.audits.push(auditCopy);
+            // Referência direta — showReport só lê, não muta
+            const auditToShow = currentAudit;
+            db.audits.push(auditToShow);
 
-            // Reset memória imediatamente antes de salvar para não travar a UI
+            // Reset memória para novo objeto (não afeta auditToShow)
             currentAudit = { id: null, storeId: null, date: null, managerName: '', supervisorName: '', departments: [] };
 
-            // Exibe o relatório IMEDIATAMENTE, sem esperar o salvamento
-            showReport(auditCopy);
+            // Exibe o relatório IMEDIATAMENTE, sem nenhum processamento pesado antes
+            showReport(auditToShow);
 
-            // Salva em background (localStorage + cloud) sem bloquear a thread principal
+            // Salva em background: extrai fotos para store separada e serializa só o texto leve
             setTimeout(() => {
                 try {
-                    saveDB(true); // SYNC AUTOMÁTICO AO FINALIZAR (em background)
+                    saveDB(true); // SYNC AUTOMÁTICO AO FINALIZAR (em background, sem fotos no JSON)
                 } catch (saveErr) {
                     console.error('Erro ao salvar auditoria no banco:', saveErr);
                 }
-            }, 0);
+            }, 50); // 50ms dá tempo do relatório renderizar antes do saveDB
         } else {
             console.warn('Tentativa abortada: auditoria vazia.');
             alert('Não foi possível finalizar: nenhum setor foi avaliado.');
             return; // Retorna cedo para evitar crash e reset da memória
         }
     }
+
 
     function updateProgressBar(stepIndex) {
         const bar = document.getElementById('audit-progress-bar');
