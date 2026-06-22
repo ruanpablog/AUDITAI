@@ -10,25 +10,70 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const _obfuscate = (str) => {
         if (!str) return "";
-        let result = "";
+        const secretLen = _secretKey.length;
+        const charCodes = new Uint16Array(str.length);
         for (let i = 0; i < str.length; i++) {
-            result += String.fromCharCode(str.charCodeAt(i) ^ _secretKey.charCodeAt(i % _secretKey.length));
+            charCodes[i] = str.charCodeAt(i) ^ _secretKey.charCodeAt(i % secretLen);
         }
+        const chunks = [];
+        const chunkSize = 16384;
+        for (let i = 0; i < charCodes.length; i += chunkSize) {
+            chunks.push(String.fromCharCode.apply(null, charCodes.subarray(i, i + chunkSize)));
+        }
+        const result = chunks.join('');
         return btoa(unescape(encodeURIComponent(result)));
     };
 
     const _deobfuscate = (str) => {
         if (!str) return "";
         try {
-            let decoded = decodeURIComponent(escape(atob(str)));
-            let result = "";
+            const decoded = decodeURIComponent(escape(atob(str)));
+            const secretLen = _secretKey.length;
+            const charCodes = new Uint16Array(decoded.length);
             for (let i = 0; i < decoded.length; i++) {
-                result += String.fromCharCode(decoded.charCodeAt(i) ^ _secretKey.charCodeAt(i % _secretKey.length));
+                charCodes[i] = decoded.charCodeAt(i) ^ _secretKey.charCodeAt(i % secretLen);
             }
-            return result;
+            const chunks = [];
+            const chunkSize = 16384;
+            for (let i = 0; i < charCodes.length; i += chunkSize) {
+                chunks.push(String.fromCharCode.apply(null, charCodes.subarray(i, i + chunkSize)));
+            }
+            return chunks.join('');
         } catch (e) {
             return null;
         }
+    };
+
+    const compressImage = (file, callback) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const maxSize = 800;
+                if (width > height) {
+                    if (width > maxSize) {
+                        height = Math.round((height * maxSize) / width);
+                        width = maxSize;
+                    }
+                } else {
+                    if (height > maxSize) {
+                        width = Math.round((width * maxSize) / height);
+                        height = maxSize;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                callback(dataUrl);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     };
 
     const supabaseUrl = 'https://nxyziofojebwqvdufoyb.supabase.co';
@@ -388,14 +433,18 @@ const _genChecksum = (str) => {
             const cloudId = getCloudId();
             console.log(`Tentando sincronizar com Supabase (${cloudId})...`);
             
-            // 1. Busca dados do container específico do usuário logado
-            const { data: specData, error: specError } = await supabase.from('app_state').select('db_data').eq('id', cloudId).single();
-            if (!specError && specData) cloudData = specData.db_data;
+            // Executa as consultas ao Supabase em paralelo para reduzir a latência de rede
+            const specPromise = supabase.from('app_state').select('db_data').eq('id', cloudId).single();
+            const mainPromise = (cloudId !== 'auditai_main') 
+                ? supabase.from('app_state').select('db_data').eq('id', 'auditai_main').single()
+                : Promise.resolve({ data: null, error: null });
 
-            // 2. SEMPRE busca usuários do container MAIN para garantir que novos cadastros apareçam para o Admin
-            // Isso resolve o problema de novos usuários "sumirem" se o Admin estiver em um container privado
+            const [specRes, mainRes] = await Promise.all([specPromise, mainPromise]);
+
+            if (!specRes.error && specRes.data) cloudData = specRes.data.db_data;
+
             if (cloudId !== 'auditai_main') {
-                const { data: mainData } = await supabase.from('app_state').select('db_data').eq('id', 'auditai_main').single();
+                const mainData = mainRes.data;
                 if (mainData && mainData.db_data && mainData.db_data.users) {
                     if (!cloudData) {
                         cloudData = mainData.db_data;
@@ -1690,8 +1739,10 @@ const _genChecksum = (str) => {
             grid.appendChild(card);
         });
 
-        if(currentAudit.departments.length > 0) {
+        if(currentAudit.departments && currentAudit.departments.length > 0) {
             document.getElementById('btn-finish-audit').classList.remove('hidden');
+        } else {
+            document.getElementById('btn-finish-audit').classList.add('hidden');
         }
     }
 
@@ -1986,38 +2037,46 @@ const _genChecksum = (str) => {
                     const file = e.target.files[0];
                     if(!file) return;
                     
-                    if (typeof supabase !== 'undefined') {
-                        btnAddPhoto.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Enviando...';
-                        btnAddPhoto.disabled = true;
-                        const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-                        supabase.storage.from('audit_photos').upload(fileName, file)
-                            .then(({ data, error }) => {
-                                if (error) {
-                                    alert('Erro ao enviar foto: ' + error.message);
-                                    btnAddPhoto.innerHTML = '<i class="ph ph-camera"></i> Adicionar Foto';
-                                } else {
-                                    const { data: publicUrlData } = supabase.storage.from('audit_photos').getPublicUrl(fileName);
-                                    if (publicUrlData && publicUrlData.publicUrl) {
-                                        const url = publicUrlData.publicUrl;
-                                        itemEl.dataset.photoBase64 = url;
-                                        previewContainer.innerHTML = `<img src="${url}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
-                                        previewContainer.style.display = 'block';
-                                        btnAddPhoto.innerHTML = '<i class="ph ph-camera-rotate"></i> Trocar Foto';
-                                    }
-                                }
-                            })
-                            .finally(() => btnAddPhoto.disabled = false);
-                    } else {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                            const base64 = ev.target.result;
-                            itemEl.dataset.photoBase64 = base64;
-                            previewContainer.innerHTML = `<img src="${base64}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
-                            previewContainer.style.display = 'block';
-                            btnAddPhoto.innerHTML = '<i class="ph ph-camera-rotate"></i> Trocar Foto';
-                        };
-                        reader.readAsDataURL(file);
-                    }
+                    btnAddPhoto.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processando...';
+                    btnAddPhoto.disabled = true;
+                    
+                    compressImage(file, (compressedBase64) => {
+                        // Salva localmente como base64 comprimido imediatamente
+                        itemEl.dataset.photoBase64 = compressedBase64;
+                        
+                        // Também atualiza o input .photo-data para compatibilidade
+                        let photoInput = itemEl.querySelector('.photo-data');
+                        if (!photoInput) {
+                            photoInput = document.createElement('input');
+                            photoInput.type = 'hidden';
+                            photoInput.className = 'photo-data';
+                            itemEl.appendChild(photoInput);
+                        }
+                        photoInput.value = compressedBase64;
+                        
+                        previewContainer.innerHTML = `<img src="${compressedBase64}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
+                        previewContainer.style.display = 'block';
+                        btnAddPhoto.innerHTML = '<i class="ph ph-camera-rotate"></i> Trocar Foto';
+                        btnAddPhoto.disabled = false;
+                        
+                        // Tenta upload em background no Supabase se configurado
+                        if (typeof supabase !== 'undefined' && supabase.storage) {
+                            const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+                            fetch(compressedBase64)
+                                .then(res => res.blob())
+                                .then(blob => {
+                                    supabase.storage.from('audit_photos').upload(fileName, blob)
+                                        .then(({ data, error }) => {
+                                            if (!error) {
+                                                const { data: publicUrlData } = supabase.storage.from('audit_photos').getPublicUrl(fileName);
+                                                if (publicUrlData && publicUrlData.publicUrl) {
+                                                    itemEl.dataset.photoBase64 = publicUrlData.publicUrl;
+                                                }
+                                            }
+                                        });
+                                });
+                        }
+                    });
                 });
             }
 
@@ -2096,7 +2155,8 @@ const _genChecksum = (str) => {
             const val = activeBtn.dataset.val;
             const obs = itemEl.querySelector('.item-obs').value;
             const treaty = itemEl.querySelector('.item-treaty').value;
-            const photo64 = itemEl.dataset.photoBase64;
+            const photoInput = itemEl.querySelector('.photo-data');
+            const photo64 = itemEl.dataset.photoBase64 || (photoInput ? photoInput.value : null);
             const isCritico = itemEl.dataset.critical === "true";
             const isBad = val === 'ruim' || val === 'insuficiente';
 
@@ -2167,6 +2227,11 @@ const _genChecksum = (str) => {
 
     // --- Finish Audit ---
     document.getElementById('btn-finish-audit').addEventListener('click', () => {
+        if (!currentAudit.departments || currentAudit.departments.length === 0) {
+            alert('Você precisa avaliar e concluir pelo menos um departamento/setor antes de finalizar a auditoria!');
+            return;
+        }
+
         let hasCritical = false;
         currentAudit.departments.forEach(d => {
             d.responses.forEach(r => {
@@ -2241,6 +2306,8 @@ const _genChecksum = (str) => {
             saveDB(true); // SYNC AUTOMÁTICO AO FINALIZAR
         } else {
             console.warn('Tentativa abortada: auditoria vazia.');
+            alert('Não foi possível finalizar: nenhum setor foi avaliado.');
+            return; // Retorna cedo para evitar crash e reset da memória
         }
 
         // Reset Memory
@@ -5287,29 +5354,40 @@ document.getElementById('categories-container').addEventListener('click', (e) =>
 document.getElementById('photo-upload-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file && currentUploadItemEl) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const base64Str = event.target.result;
+        const itemEl = currentUploadItemEl;
+        const btn = itemEl.querySelector('.btn-add-photo');
+        if (btn) {
+            btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processando...';
+            btn.disabled = true;
+        }
 
-            // Store base64 in dataset of the item for later retrieval
-            const photoDataStorage = currentUploadItemEl.querySelector('.photo-data');
+        compressImage(file, (compressedBase64) => {
+            itemEl.dataset.photoBase64 = compressedBase64;
+
+            const photoDataStorage = itemEl.querySelector('.photo-data');
             if (!photoDataStorage) {
                 const hiddenData = document.createElement('input');
                 hiddenData.type = 'hidden';
                 hiddenData.className = 'photo-data';
-                currentUploadItemEl.appendChild(hiddenData);
+                itemEl.appendChild(hiddenData);
             }
-            currentUploadItemEl.querySelector('.photo-data').value = base64Str;
+            itemEl.querySelector('.photo-data').value = compressedBase64;
 
-            // Visual feedback
-            const btn = currentUploadItemEl.querySelector('.btn-add-photo');
-            btn.innerHTML = '<i class="ph ph-check-circle" style="color:var(--success);"></i> Foto Adicionada';
-            btn.classList.add('btn-outline');
-            btn.classList.remove('btn-ghost');
+            const previewContainer = itemEl.querySelector('.photo-preview-container');
+            if (previewContainer) {
+                previewContainer.innerHTML = `<img src="${compressedBase64}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">`;
+                previewContainer.style.display = 'block';
+            }
+
+            if (btn) {
+                btn.innerHTML = '<i class="ph ph-check-circle" style="color:var(--success);"></i> Foto Adicionada';
+                btn.classList.add('btn-outline');
+                btn.classList.remove('btn-ghost');
+                btn.disabled = false;
+            }
 
             currentUploadItemEl = null; // reset
-        };
-        reader.readAsDataURL(file);
+        });
     }
 });
 
